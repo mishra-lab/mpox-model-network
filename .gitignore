@@ -1,0 +1,35 @@
+# dirs
+.old/
+.tmp/
+.debug/
+.private/
+.rdata/
+.sub/
+
+# python
+__pycache__/
+*.pyc
+
+# R
+.Rhistory
+Rplots.pdf
+
+# tex
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*-blx.bib
+*.bcf
+*.nav
+*.snm
+*.vrb
+*.run.xml
+*.synctex
+*.synctex.gz
+*-converted-to.pdf
+
+# windows
+.DS_Store
