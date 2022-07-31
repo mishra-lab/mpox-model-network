@@ -3,7 +3,7 @@
   # some default colors, etc. for plotting
   color = list(
     'city'   = list('A'='#66ccff','B'='#4488dd','C'='#2244bb','bridge'='#cccccc'),
-    'health' = list('S'='#ffcc00','I'='#ff0066','R'='#cc00cc','V'='#00cc66'),
+    'health' = list('S'='#ffcc00','E'='#ff7700','I'='#ff0066','R'='#cc00cc','V1'='#33dd99','V2'='#009999'),
     'src'    = list('Import'='#ff0066','Local'='#0099cc')
   ),
   shape = list(
@@ -32,21 +32,21 @@
   return(f)
 }
 
-draw.network = function(P,n.color='city',e.color='city',shape='circle',size=NULL){
+draw.network = function(G,n.color='city',e.color='city',shape='circle',size=NULL){
   # wrapper for plot.igraph, with some default values
-  if (is.null(size)){ size = 80/sqrt(len(P$G)) }
-  plot(P$G,
+  if (is.null(size)){ size = 80/sqrt(len(G)) }
+  plot(G,
     margin       = 0,
     vertex.label = NA,
-    edge.color   = .attr.map(P$G,'edge',e.color,'color'),
-    vertex.color = .attr.map(P$G,'node',n.color,'color'),
-    vertex.shape = .attr.map(P$G,'node',shape,'shape'),
-    vertex.size  = .attr.cts(P$G,'node',size),
-    layout       = graph_attr(P$G,'layout') # OK if NULL
+    edge.color   = .attr.map(G,'edge',e.color,'color'),
+    vertex.color = .attr.map(G,'node',n.color,'color'),
+    vertex.shape = .attr.map(G,'node',shape,'shape'),
+    vertex.size  = .attr.cts(G,'node',size),
+    layout       = graph_attr(G,'layout') # OK if NULL
   )
 }
 
-plot.epidemic = function(out.long,y='N',select=list(city='all'),intervals=.9,facet='~',color='health'){
+plot.epidemic = function(out.long,y='N',select=list(city='all'),intervals=.9,facet=NULL,color='health'){
   # plot median for out.long[[y]], maybe after selecting some rows
   # out.long can also be out.long.s (e.g. from rbind), then we add confidence intervals (ci)
   out.long = q3.aggr(y,c('t','health','city'),out.long,intervals=intervals) # compute the ci

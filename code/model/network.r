@@ -1,13 +1,22 @@
 suppressPackageStartupMessages({library('igraph')})
 
+fitness.game = function(n,deg.mean,fitness,adj.power){
+  G = static.fitness.game(
+    no.of.edges = round(n * deg.mean),
+    fitness.out = fitness
+  )
+  p.add = degree(G)^adj.power / (1+degree(G)) # empiric
+  G = connect.iso(G,p.add=p.add)
+}
+
 gen.net = function(net.type,N,net.args,node.attrs,edge.attrs){
   # generate a network 
   net.fun = switch(net.type,
-    'er' = random.graph.game,
-    'ba' = barabasi.game,
-    'ff' = forest.fire.game,
-  )
-  G = kw.call(net.fun,net.args,nodes=N,dir=F)
+    'er'  = random.graph.game,
+    'ba'  = barabasi.game,
+    'ff'  = forest.fire.game,
+    'fit' = fitness.game)
+  G = kw.call(net.fun,net.args,n=N)
   vertex_attr(G,'degree') = degree(G)
   for (name in names(node.attrs)){
     vertex_attr(G,name) = node.attrs[name]
@@ -18,7 +27,7 @@ gen.net = function(net.type,N,net.args,node.attrs,edge.attrs){
   return(G)
 }
 
-gen.multi.city = function(P){
+gen.multi.city = function(P){ # TODO: port to graph/graph.r
   # generate a network from multiple cities
   city.attr = lapply(P$lab.city,function(city){ list('city'=city) })
   G.city.list = mapply(gen.net,P$net.type,P$N.city,P$net.args,city.attr,city.attr)
@@ -30,7 +39,7 @@ gen.multi.city = function(P){
   return(G)
 }
 
-bridge.nets = function(G,g.attr,mix.bridge){
+bridge.nets = function(G,g.attr,mix.bridge){ # TODO: port to graph/graph.r
   # if G contains multiple sub-nets, defined by edge attribute g.attr (e.g. 'city')
   # this function breaks some edges within each group & reconnects them per mix.bridge
   # mix.bridge must be symmetric, zero diagonal, and rowSums divisible by 2 exactly
@@ -40,7 +49,7 @@ bridge.nets = function(G,g.attr,mix.bridge){
   E.g   = edge.attr.vec(G,g.attr) # vec of attributes by which to group & bridge
   g.vec = unique(E.g) # groups
   n.g   = len(g.vec)
-  g.seq = seq(n.g)
+  g.seq = seqn(n.g)
   E.mat.del = lapply(g.seq,function(g){ # randomly select edges to delete within each group
     E.mat.g = E.mat[E.g==g.vec[g],]
     matrix(E.mat.g[sample(nrow(E.mat.g),size=e.swap[g]/2),],ncol=2)
@@ -58,6 +67,17 @@ bridge.nets = function(G,g.attr,mix.bridge){
   G = del.edges(G,kw.call(rbind,E.mat.del))
   G = kw.call(add.edges,setNames(list('bridge'),g.attr),G,E.mat.add)
   return(G)
+}
+
+connect.iso = function(G,p.add=NULL){ # TODO: port to graph/graph.r (?)
+  # re-connect isolated nodes to non-isolated nodes (with weights p.add)
+  N = vcount(G)
+  if (N == 0){ return(G) }
+  i = seqn(N)
+  b.0 = degree(G) == 0
+  i.0 = i[b.0]
+  i.add = sample(i[!b.0],len(i.0),p=p.add[!b.0])
+  G = add.edges(G,c(rbind(i.0,i.add)))
 }
 
 node.attr.vec = function(G,name){

@@ -1,47 +1,79 @@
 library('reshape2')
 
-# TODO: negative indices instead of setiff (!)
+# TODO: negative indices instead of setiff, faster ?
 
-epi.t = function(t0=1,tf=365){
-  seq(t0,tf)
+epi.t = function(t0=1,tf=180){
+  t = seq(t0,tf)
 }
 
 epi.init.state = function(P){ # "X"
-  i = seq(vcount(P$G)) # node indices
+  i = seqn(P$N) # node indices
+  I0 = sample.strat(i,P$N.I0.city, 
+    strat   = node.attr.vec(P$G,'city'),
+    weights = node.attr.vec(P$G,'degree')) # same as degree(P$G)
   X = list()
-  X$I = sample.strat(i,P$N.I0.city, # i of infected
-    strat=node.attr.vec(P$G,'city'),
-    weights=node.attr.vec(P$G,'degree'))
-  X$Z = sample(seq(P$Z0.max),P$N.I0,rep=TRUE) # days since infection
-  X$S = setdiff(i,X$I) # i of susceptible
-  X$R = numeric()      # i of recovered
-  X$V = numeric()      # i of vaccinated
+  X$S = setdiff(i,I0) # i of susceptible
+  X$E = numeric()     # i of exposed
+  X$I = I0            # i of infected
+  X$R = numeric()     # i of recovered
+  X$V1 = numeric()    # i of vaccinated 1 dose
+  X$V2 = numeric()    # i of vaccinated 2 dose
   return(X)
 }
 
 epi.mat.init = function(P,t){
   # large, complete representation: t (rows) x individuals (cols)
-  M = array(character(),dim=c(len(t),P$N),dimnames=list('t'=t,'i'=seq(P$N)))
+  M = array(character(0),dim=c(len(t),P$N),dimnames=list('t'=t,'i'=seqn(P$N)))
 }
 
 epi.mat.update = function(M,X,tj){
   # update M with current state
-  M[tj,X$S] = 'S'
-  M[tj,X$I] = 'I'
-  M[tj,X$R] = 'R'
-  M[tj,X$V] = 'V'
+  M[tj,X$S]  = 'S'
+  M[tj,X$E]  = 'E'
+  M[tj,X$I]  = 'I'
+  M[tj,X$R]  = 'R'
+  M[tj,X$V1] = 'V1'
+  M[tj,X$V2] = 'V2'
   return(M)
 }
 
-epi.vaccinate = function(P,X,tj){
-  # if within the vaccinating period, select some of X$S to vaccinate
-  if ((tj > P$vax.t0) & (tj <= P$vax.t0 + P$vax.dur)) {
-    Vj = sample.strat(X$S, P$N.vax.city.day,
-      strat=node.attr.vec(P$G,'city')[X$S],
-      weights=node.attr.vec(P$G,P$w.vax.attr)[X$S])
-  } else {
-    Vj = numeric(0)
+epi.do.vaccinate = function(P,X,tj){
+  # get i of newly vaccinated
+  Vj = list(numeric(0),numeric(0)) # dose 1, dose 2
+  for (args in P$vax.args.phase){ # for each vaccination phase
+    if ((tj > args$t0) & (tj <= args$t0 + args$dur)){ # is t during phase?
+      N.city.day = (args$N / args$dur) * args$w.city # N vaccinated daily by city
+      i = switch(args$dose,'1'=X$S,'2'=X$V1) # dose -> sampling from S or V1
+      weights = switch(is.null(args$w.attr),T=NULL,F=node.attr.vec(P$G,args$w.attr)[i])
+      # TODO: check empty args or something (rare error)
+      Vj.phase = sample.strat(i,N.city.day, # sample by city, maybe with weights
+        strat = node.attr.vec(P$G,'city')[i],
+        weights = weights)
+      Vj[[args$dose]] = c(Vj[[args$dose]],Vj.phase) # append vax from this phase 
+    }
   }
+  Vj = lapply(Vj,unique) # remove any duplicates
+}
+
+epi.do.breakthrough = function(P,X){
+  # get i of vaccinated who could experience breakthrough - TODO: can this be done (faster) via p?
+  VSj = c(sample.i(X$V1,1-P$vax.eff.dose[1]),sample.i(X$V2,1-P$vax.eff.dose[2]))
+}
+
+epi.do.expose = function(P,X,Sj){
+  # get i of newly infected
+  Ej = sample.i(unlist(adjacent_vertices(P$G,X$I)),P$beta/P$net.dur)
+  Ej = unique(intersect(Ej,Sj)) # unique exposed who are susceptible
+}
+
+epi.do.infectious = function(P,X){
+  # get i of infectious
+  Ij = sample.i(X$E,1/P$dur.exp)
+}
+
+epi.do.recovery = function(P,X){
+  # get i of recovered
+  Rj = sample.i(X$I,1/P$dur.inf)
 }
 
 epi.run = function(P,t){
@@ -51,30 +83,32 @@ epi.run = function(P,t){
   M = epi.mat.init(P,t)
   for (tj in t){
     M = epi.mat.update(M,X,tj) # log state
-    # if (len(X$I) != len(X$Z)){ stop('len(X$I) != len(X$Z)') } # DEBUG
-    # if (len(X$S)+len(X$I)+len(X$R)+len(X$V) != P$N){ stop('len(X) != P$N') } # DEBUG
-    Vj  = epi.vaccinate(P,X,tj) # vaccinated TODO: PEP
-    nIj = rbinom(len(X$I),degree(P$G)[X$I],P$beta*P$inf.pz[X$Z])
-    Ij  = unlist(mapply(sample,adjacent_vertices(P$G,X$I),nIj)) # i of new I
-    Ij  = unique(setdiff(Ij,c(X$I,X$R,X$V,Vj))) # TODO: non-perfect vaccine instead
-    Zj  = rep(0,len(Ij))        # initialize Z for new I
-    bRj = X$Z >= P$inf.dur      # check who has recovered
-    X$Z = X$Z + 1               # step days since infection
-    X$R = c(X$R,X$I[bRj])       # append new recovered
-    X$I = c(X$I[!bRj],Ij)       # remove recovered & append new infected
-    X$Z = c(X$Z[!bRj],Zj)       # remove recovered & append new infected
-    X$S = setdiff(X$S,c(Ij,Vj)) # remove infected & vaccinated
-    X$V = c(X$V,Vj)             # append new vaccinated
+    # computing transitions
+    Vj = epi.do.vaccinate(P,X,tj) # TODO: PEP
+    Sj = c(X$S,epi.do.breakthrough(P,X))
+    Ej = epi.do.expose(P,X,Sj)
+    Ij = epi.do.infectious(P,X)
+    Rj = epi.do.recovery(P,X)
+    # applying transitions
+    X$R  = c(X$R,Rj)                              # append new recovered
+    X$I  = setdiff(c(X$I,Ij),Rj)                  # append new infectious & remove recovered
+    X$E  = setdiff(c(X$E,Ej),Ij)                  # append new exposed & remove infectious
+    X$V1 = setdiff(c(X$V1,Vj[[1]]),c(Ej,Vj[[2]])) # append new dose-1 & remove exposed, dose-2
+    X$V2 = setdiff(c(X$V2,Vj[[2]]),Ej)            # append new dose-2 & remove exposed
+    X$S  = setdiff(X$S,c(Ej,Vj[[1]]))             # remove exposed, dose-1
+    # DEBUG
+    if (sum(sapply(X,len)) != P$N){ stop('len(X) != P$N') } # DEBUG
   }
   return(M)
 }
 
-epi.run.s = function(P.s,t,results=TRUE){
+epi.run.s = function(P.s,t,results=TRUE,parallel=TRUE){
   # run for multiple seeds, and usually compute the results immediately too
+  if (parallel){ lapply.fun = par.lapply } else { lapply.fun = lapply }
   if (results){
-    par.lapply(P.s,function(P){ epi.results(P,t,epi.run(P,t)) })
+    lapply.fun(P.s,function(P){ epi.results(P,t,epi.run(P,t)) })
   } else {
-    par.lapply(P.s,epi.run(P,t))
+    lapply.fun(P.s,function(P){ epi.run(P,t) })
   }
 }
 
@@ -101,7 +135,7 @@ epi.output = function(P,t,M){
   # yields a more efficient representation of M, but loses information
   city = node.attr.vec(P$G,'city')
   out = data.frame('t'=t)
-  for (h in c('S','I','R','V')){
+  for (h in c('S','E','I','R','V1','V2')){
     out[[join.str(h,'all')]] = rowSums(M==h)
     for (y in P$lab.city){
       out[[join.str(h,y)]] = rowSums(M[,city==y]==h)
@@ -119,7 +153,7 @@ epi.output.melt = function(out,P){
   out.long$health = as.character(out.long$health)
   out.long$city   = as.character(out.long$city)
   out.long$seed   = P$seed
-  N.city = rep(c(P$N,P$N.city),each=N.t,times=4) # NOTE: 4 from SIRV
+  N.city = rep(c(P$N,P$N.city),each=N.t,times=6) # NOTE: 6 from SEIRVV
   out.long$n.city = out.long$N / N.city # per-city prevalence
   return(out.long)
 }
