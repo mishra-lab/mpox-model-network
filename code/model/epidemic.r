@@ -9,8 +9,8 @@ epi.t = function(t0=1,tf=180){
 epi.init.state = function(P){ # "X"
   i = seqn(P$N) # node indices
   I0 = sample.strat(i,P$N.I0.city, 
-    strat   = node.attr.vec(P$G,'city'),
-    weights = node.attr.vec(P$G,'degree')) # same as degree(P$G)
+    strat   = P$G$attr$i$city,
+    weights = P$G$attr$i$par.p6m)
   X = list()
   X$S = setdiff(i,I0) # i of susceptible
   X$E = numeric()     # i of exposed
@@ -40,16 +40,16 @@ epi.mat.update = function(M,X,tj){
 epi.do.vaccinate = function(P,X,tj){
   # get i of newly vaccinated
   Vj = list(numeric(0),numeric(0)) # dose 1, dose 2
-  for (args in P$vax.args.phase){ # for each vaccination phase
-    if ((tj > args$t0) & (tj <= args$t0 + args$dur)){ # is t during phase?
-      N.city.day = (args$N / args$dur) * args$w.city # N vaccinated daily by city
-      i = switch(args$dose,'1'=X$S,'2'=X$V1) # dose -> sampling from S or V1
-      weights = switch(is.null(args$w.attr),T=NULL,F=node.attr.vec(P$G,args$w.attr)[i])
+  for (A in P$vax.args.phase){ # for each vaccination phase
+    if ((tj > A$t0) & (tj <= A$t0 + A$dur)){ # is t during phase?
+      N.city.day = (A$N / A$dur) * A$w.city # N vaccinated daily by city
+      i = switch(A$dose,'1'=X$S,'2'=X$V1) # dose -> sampling from S or V1
+      weights = switch(is.null(A$w.attr),T=NULL,F=P$G$attr$i[[A$w.attr]][i])
       # TODO: check empty args or something (rare error)
       Vj.phase = sample.strat(i,N.city.day, # sample by city, maybe with weights
-        strat = node.attr.vec(P$G,'city')[i],
+        strat = P$G$attr$i$city[i],
         weights = weights)
-      Vj[[args$dose]] = c(Vj[[args$dose]],Vj.phase) # append vax from this phase 
+      Vj[[A$dose]] = c(Vj[[A$dose]],Vj.phase) # append vax from this phase 
     }
   }
   Vj = lapply(Vj,unique) # remove any duplicates
@@ -62,7 +62,7 @@ epi.do.breakthrough = function(P,X){
 
 epi.do.expose = function(P,X,Sj){
   # get i of newly infected
-  Ej = sample.i(unlist(adjacent_vertices(P$G,X$I)),P$beta/P$net.dur)
+  Ej = sample.i(unlist(adjacent.i(P$G,X$I)),P$beta/P$net.dur)
   Ej = unique(intersect(Ej,Sj)) # unique exposed who are susceptible
 }
 
@@ -96,8 +96,7 @@ epi.run = function(P,t){
     X$V1 = setdiff(c(X$V1,Vj[[1]]),c(Ej,Vj[[2]])) # append new dose-1 & remove exposed, dose-2
     X$V2 = setdiff(c(X$V2,Vj[[2]]),Ej)            # append new dose-2 & remove exposed
     X$S  = setdiff(X$S,c(Ej,Vj[[1]]))             # remove exposed, dose-1
-    # DEBUG
-    if (sum(sapply(X,len)) != P$N){ stop('len(X) != P$N') } # DEBUG
+    if (.debug && sum(sapply(X,len)) != P$N){ stop('len(X) != P$N') }
   }
   return(M)
 }
@@ -124,16 +123,15 @@ epi.results = function(P,t,M){
 
 epi.net.attrs = function(G,M){
   # add some attributes to G after running the model
-  vertex_attr(G,'sqrt.deg') = sqrt(as.numeric(degree(G)))
-  vertex_attr(G,'src')      = as.character(factor(M[1,]=='I',labels=c('Local','Import')))
-  vertex_attr(G,'health')   = M[length(t),]
+  G$attr$i$inf.src = as.character(factor(M[1,]=='I',labels=c('Local','Import')))
+  G$attr$i$health  = M[length(t),]
   return(G)
 }
 
 epi.output = function(P,t,M){
   # sum up the numbers of people in each state over time
   # yields a more efficient representation of M, but loses information
-  city = node.attr.vec(P$G,'city')
+  city = P$G$attr$i$city
   out = data.frame('t'=t)
   for (h in c('S','E','I','R','V1','V2')){
     out[[join.str(h,'all')]] = rowSums(M==h)

@@ -4,29 +4,28 @@ def.params = function(seed=NULL,...){
   P = list()
   P$seed           = seed
   P$lab.city       = c('A','B','C') # city labels
-  P$N.city         = c(6,5,4) * 50 # city pop sizes
+  P$N.city         = c(1000,0,0) # city pop sizes
   P$N              = sum(P$N.city) # total pop size
-  P$net.type       = 'fit'
+  P$net.dur        = 180 # period of time reflected in the net
   P$net.args.city  = list(
-    'A' = def.params.msm.net(P$N.city[1]),
-    'B' = def.params.msm.net(P$N.city[2]),
-    'C' = def.params.msm.net(P$N.city[3]))
-  P$e.bridge       = .01 # fraction of bridges (contacts) between cities
-  P$mix.bridge     = matrix(c(0,3,1, 3,0,1, 1,1,0),c(3,3)) # relative distribution of bridges
+    'A' = def.params.net.city(P$N.city[1]),
+    'B' = def.params.net.city(P$N.city[2]),
+    'C' = def.params.net.city(P$N.city[3]))
+  # TODO: rebuild bridges, later
+  # P$e.bridge       = .00 # fraction of bridges (contacts) between cities
+  # P$mix.bridge     = matrix(c(0,3,1, 3,0,1, 1,1,0),c(3,3)) # relative distribution of bridges
   P$N.I0.city      = c(10,0,0) # number initially infected per-city
   P$dur.exp        = 7 # average duration in exposed
   P$dur.inf        = 7 # average duration infectious (considering isolation)
   P$beta           = .9 # overall probability of transmission
-  P$net.dur        = 30 # TODO: should be 180 per data, but haven't modelled repeat contacts ...
   P$vax.eff.dose   = c(.60,.90) # vaccine effectiveness by dose
   N.vax = .10 * P$N
   P$vax.args.phase = list( # vaccination config
-    '1'  = list(t0=30,dur=20,N=N.vax,dose=1,w.city=sum1(P$N.city),w.attr=NULL),
-    '2a' = list(t0=60,dur=20,N=N.vax,dose=2,w.city=sum1(P$N.city),w.attr=NULL),
-    '2b' = list(t0=60,dur=20,N=N.vax,dose=1,w.city=sum1(P$N.city),w.attr=NULL))
+    '1' = list(t0=30,dur=20,N=N.vax,dose=1,w.city=sum1(P$N.city),w.attr=NULL))
   P = list.update(P,...) # override any of the above
   if (is.null(P$G)){
-    P$G = gen.multi.city(P) # generate network (expensive)
+    P$G = make.net.city(P$net.args.city$A,'A') # TEMP
+    # P$G = make.net.multi.city(P) # TODO: rebuild
   }
   return(P)
 }
@@ -37,11 +36,58 @@ def.params.s = function(seeds){
   return(par.lapply(seeds,def.params))
 }
 
-def.params.msm.net = function(N){
-  g.par = list(shape=0.255,rate=0.032,shift=0.913) # empiric
-  P = list()
-  P$deg.mean = 3.412 + 0.323 * max(0,log10(N)) # empiric
-  P$fitness  = rgamma(N,shape=g.par$shape,rate=g.par$rate) + g.par$shift
-  P$adj.power = -.628 # empiric
-  return(P)
+def.params.net.city = function(N){
+  # TODO: double check if / how seed should be used here
+  A = list()
+  A$N = N
+  A$deg.shape = 0.255
+  A$deg.rate = 0.032
+  A$deg.shift = 0.913
+  A$main.frac = .2
+  A$main.w.deg.power = -1
+  A$main.m.shape = 5
+  A$main.m.rate = .2
+  A$casu.m.shape = .3
+  A$casu.m.rate = .3
+  return(A)
+}
+
+make.net.city = function(A,lab.city){
+  # set.seed(A$seed) # TODO
+  i = seqn(A$N)
+  # sample degrees
+  deg.i = round(rgamma(A$N,shape=A$deg.shape,A$deg.rate) + A$deg.shift)
+  deg.i = degrees.balanced(deg.i)
+  # generate main partners
+  i.main = sample(i,round(A$main.frac*len(i)),p=deg.i^A$main.w.deg.power)
+  ii.e.main = edges.random(i.main,shuffle=FALSE)
+  r.e.main = round(rgamma(nrow(ii.e.main),shape=A$main.m.shape,rate=A$main.m.rate))
+  ii.e.main.r = edges.repeated(ii.e.main,r.e.main)
+  # generate casual partnerss
+  deg.i.casu = deg.i
+  deg.i.casu[i.main] = deg.i.casu[i.main] - 1
+  ii.e.casu = edges.unloop(edges.from.degrees(i,deg.i.casu))
+  r.e.casu = round(1+rgamma(nrow(ii.e.casu),shape=A$casu.m.shape,rate=A$casu.m.rate))
+  ii.e.casu.r = edges.repeated(ii.e.casu,r.e.casu)
+  # all contacts
+  ii.e = rbind(ii.e.main.r,ii.e.casu.r)
+  # attributes
+  g.attr = list()
+  g.attr$city = lab.city
+  i.attr = list()
+  i.attr$city = rep(lab.city,A$N)
+  i.attr$par.p6m = deg.i
+  e.attr = list()
+  if (.debug){
+    i.attr$sex.p6m = degrees.from.edges(i,ii.e)
+    i.attr$main = factor(i %in% i.main,c(T,F),c('Yes','No'))
+    e.attr$type = factor(c(rep('main',nrow(ii.e.main.r)),rep('casu',nrow(ii.e.casu.r))))
+    kr.e = index.repeated.edges(ii.e)
+    e.attr$k.e = kr.e[,1]
+    e.attr$r.e = kr.e[,2]
+  }
+  # graph object
+  G = graph.obj(ii.e=ii.e,i=i,deg.i=deg.i,g.attr=g.attr,i.attr=i.attr,e.attr=e.attr)
+  if (.debug){ G$attr$g$layout = graph.layout(G) }
+  return(G)
 }

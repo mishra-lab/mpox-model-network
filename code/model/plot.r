@@ -1,3 +1,4 @@
+# TODO: clean-up .spec as module-level config
 
 .spec = list(
   # some default colors, etc. for plotting
@@ -30,20 +31,6 @@
     f = as.character(factor(a,levels=names(map),labels=map))
   }
   return(f)
-}
-
-draw.network = function(G,n.color='city',e.color='city',shape='circle',size=NULL){
-  # wrapper for plot.igraph, with some default values
-  if (is.null(size)){ size = 80/sqrt(len(G)) }
-  plot(G,
-    margin       = 0,
-    vertex.label = NA,
-    edge.color   = .attr.map(G,'edge',e.color,'color'),
-    vertex.color = .attr.map(G,'node',n.color,'color'),
-    vertex.shape = .attr.map(G,'node',shape,'shape'),
-    vertex.size  = .attr.cts(G,'node',size),
-    layout       = graph_attr(G,'layout') # OK if NULL
-  )
 }
 
 plot.epidemic = function(out.long,y='N',select=list(city='all'),intervals=.9,facet=NULL,color='health'){
