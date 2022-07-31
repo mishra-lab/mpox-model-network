@@ -4,10 +4,10 @@ def.params = function(seed=NULL,...){
   P = list()
   P$seed           = seed
   P$lab.city       = c('A','B','C') # city labels
-  P$N.city         = c(1000,0,0) # city pop sizes
+  P$N.city         = c(100,0,0) # city pop sizes
   P$N              = sum(P$N.city) # total pop size
   P$net.dur        = 180 # period of time reflected in the net
-  P$net.args.city  = list(
+  P$net.params.city  = list(
     'A' = def.params.net.city(P$N.city[1]),
     'B' = def.params.net.city(P$N.city[2]),
     'C' = def.params.net.city(P$N.city[3]))
@@ -20,11 +20,11 @@ def.params = function(seed=NULL,...){
   P$beta           = .9 # overall probability of transmission
   P$vax.eff.dose   = c(.60,.90) # vaccine effectiveness by dose
   N.vax = .10 * P$N
-  P$vax.args.phase = list( # vaccination config
+  P$vax.params.phase = list( # vaccination config
     '1' = list(t0=30,dur=20,N=N.vax,dose=1,w.city=sum1(P$N.city),w.attr=NULL))
   P = list.update(P,...) # override any of the above
   if (is.null(P$G)){
-    P$G = make.net.city(P$net.args.city$A,'A') # TEMP
+    P$G = make.net.city(P$net.params.city$A,'A') # TEMP
     # P$G = make.net.multi.city(P) # TODO: rebuild
   }
   return(P)
@@ -38,36 +38,36 @@ def.params.s = function(seeds){
 
 def.params.net.city = function(N){
   # TODO: double check if / how seed should be used here
-  A = list()
-  A$N = N
-  A$deg.shape = 0.255
-  A$deg.rate = 0.032
-  A$deg.shift = 0.913
-  A$main.frac = .2
-  A$main.w.deg.power = -1
-  A$main.m.shape = 5
-  A$main.m.rate = .2
-  A$casu.m.shape = .3
-  A$casu.m.rate = .3
-  return(A)
+  P.net = list()
+  P.net$N = N
+  P.net$deg.shape = 0.255
+  P.net$deg.rate = 0.032
+  P.net$deg.shift = 0.913
+  P.net$main.frac = .2
+  P.net$main.w.deg.power = -1
+  P.net$main.m.shape = 5
+  P.net$main.m.rate = .2
+  P.net$casu.m.shape = .3
+  P.net$casu.m.rate = .3
+  return(P.net)
 }
 
-make.net.city = function(A,lab.city){
-  # set.seed(A$seed) # TODO
-  i = seqn(A$N)
+make.net.city = function(P.net,lab.city){
+  # set.seed(P.net$seed) # TODO
+  i = seqn(P.net$N)
   # sample degrees
-  deg.i = round(rgamma(A$N,shape=A$deg.shape,A$deg.rate) + A$deg.shift)
+  deg.i = round(rgamma(P.net$N,shape=P.net$deg.shape,P.net$deg.rate) + P.net$deg.shift)
   deg.i = degrees.balanced(deg.i)
   # generate main partners
-  i.main = sample(i,round(A$main.frac*len(i)),p=deg.i^A$main.w.deg.power)
+  i.main = sample(i,round(P.net$main.frac*len(i)),p=deg.i^P.net$main.w.deg.power)
   ii.e.main = edges.random(i.main,shuffle=FALSE)
-  r.e.main = round(rgamma(nrow(ii.e.main),shape=A$main.m.shape,rate=A$main.m.rate))
+  r.e.main = round(rgamma(nrow(ii.e.main),shape=P.net$main.m.shape,rate=P.net$main.m.rate))
   ii.e.main.r = edges.repeated(ii.e.main,r.e.main)
   # generate casual partnerss
   deg.i.casu = deg.i
   deg.i.casu[i.main] = deg.i.casu[i.main] - 1
   ii.e.casu = edges.unloop(edges.from.degrees(i,deg.i.casu))
-  r.e.casu = round(1+rgamma(nrow(ii.e.casu),shape=A$casu.m.shape,rate=A$casu.m.rate))
+  r.e.casu = round(1+rgamma(nrow(ii.e.casu),shape=P.net$casu.m.shape,rate=P.net$casu.m.rate))
   ii.e.casu.r = edges.repeated(ii.e.casu,r.e.casu)
   # all contacts
   ii.e = rbind(ii.e.main.r,ii.e.casu.r)
@@ -75,7 +75,7 @@ make.net.city = function(A,lab.city){
   g.attr = list()
   g.attr$city = lab.city
   i.attr = list()
-  i.attr$city = rep(lab.city,A$N)
+  i.attr$city = rep(lab.city,P.net$N)
   i.attr$par.p6m = deg.i
   e.attr = list()
   if (.debug){

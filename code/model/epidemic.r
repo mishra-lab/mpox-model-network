@@ -40,16 +40,16 @@ epi.mat.update = function(M,X,tj){
 epi.do.vaccinate = function(P,X,tj){
   # get i of newly vaccinated
   Vj = list(numeric(0),numeric(0)) # dose 1, dose 2
-  for (A in P$vax.args.phase){ # for each vaccination phase
-    if ((tj > A$t0) & (tj <= A$t0 + A$dur)){ # is t during phase?
-      N.city.day = (A$N / A$dur) * A$w.city # N vaccinated daily by city
-      i = switch(A$dose,'1'=X$S,'2'=X$V1) # dose -> sampling from S or V1
-      weights = switch(is.null(A$w.attr),T=NULL,F=P$G$attr$i[[A$w.attr]][i])
+  for (P.vax in P$vax.params.phase){ # for each vaccination phase
+    if ((tj > P.vax$t0) & (tj <= P.vax$t0 + P.vax$dur)){ # is t during phase?
+      N.city.day = (P.vax$N / P.vax$dur) * P.vax$w.city # N vaccinated daily by city
+      i = switch(P.vax$dose,'1'=X$S,'2'=X$V1) # dose -> sampling from S or V1
+      weights = switch(is.null(P.vax$w.attr),T=NULL,F=P$G$attr$i[[P.vax$w.attr]][i])
       # TODO: check empty args or something (rare error)
       Vj.phase = sample.strat(i,N.city.day, # sample by city, maybe with weights
         strat = P$G$attr$i$city[i],
         weights = weights)
-      Vj[[A$dose]] = c(Vj[[A$dose]],Vj.phase) # append vax from this phase 
+      Vj[[P.vax$dose]] = c(Vj[[P.vax$dose]],Vj.phase) # append vax from this phase 
     }
   }
   Vj = lapply(Vj,unique) # remove any duplicates
