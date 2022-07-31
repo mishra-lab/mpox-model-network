@@ -22,7 +22,7 @@ R.s = epi.run.s(P.s,t)
 out.long.s = epi.output.melt.s(R.s,P.s)
 
 # plot prevalence by city
-g = plot.epidemic(out.long.s,y='n.city',select=list(city=c('A','B','C'))) +
+g = plot.epidemic(out.long.s,y='n.city',select=list(city=c('A','B','C')),facet='~city') +
   labs(y='Prevalence',color='State',fill='State')
 fig.save('.tmp/prev.city',w=8,h=4)
 

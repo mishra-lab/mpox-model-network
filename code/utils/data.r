@@ -51,21 +51,3 @@ split.col = function(x,col,new.names,del=TRUE){
   if (del){ x[[col]] = NULL }
   return(x)
 }
-
-q3.aggr = function(y,by,data,intervals=.9){
-  # aggregate data[[y]] by data[[by]] to obtain median + some quantile edges
-  # e.g. y='y' & intervals = c(.5,.95) yields columns y.0.5, y.0.025, y.0.25, y.0.75, y.0.975
-  q.vec = c(.5, rev(1-intervals)/2, 1-(1-intervals)/2)
-  f = formula(paste(y,'~',paste(by,collapse='+')))
-  data.aggr = aggregate(f,data,quantile,q.vec)
-  y.aggr = as.data.frame(data.aggr[[y]])
-  data.aggr[[y]] = NULL
-  names(y.aggr) = paste0(y,'.',q.vec)
-  return(cbind(data.aggr,y.aggr))
-}
-
-q.interval = function(interval){
-  # e.g. interval = .95 -> c(0.025, 0.975)
-  ci = c((1-interval)/2, 1-(1-interval)/2)
-}
-

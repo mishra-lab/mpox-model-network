@@ -17,22 +17,18 @@ plot.network = function(G,i.aes=list(),e.aes=list()){
   g = add.meta.scales(g,e.aes)
 }
 
-plot.epidemic = function(out.long,y='N',select=list(city='all'),intervals=.9,facet=NULL,color='health',...){
-  # TODO: clean-up intervals using stat_summary / median_hilow (?)
+plot.epidemic = function(out.long,y='N',select=list(city='all'),conf.int=.9,facet=NULL,color='health',...){
   # plot median for out.long[[y]], maybe after selecting some rows
   # out.long can also be out.long.s (e.g. from rbind), then we add confidence intervals (ci)
   map = list(color=color,...)
-  out.long = q3.aggr(y,c('t','health','city'),out.long,intervals=intervals) # compute the ci
-  yq = function(q){ paste0(y,'.',q) } # convenience
-  g = ggplot(row.select(out.long,select),aes_string(x='t')) +
-    geom_line(kw.call(aes_string,map,y=yq(.5))) +
+  g = ggplot(row.select(out.long,select),aes_string(x='t',y=y)) +
+    stat_summary(geom='line',fun=median,kw.call(aes_string,map)) +
     labs(x='Time (days)') +
     facet_grid(facet) +
     theme_light()
-  map.ci = list.update(map,fill=color,color=NULL)
-  for (i in intervals){
-    ci = q.interval(i)
-    g = g + geom_ribbon(kw.call(aes_string,map.ci,ymin=yq(ci[1]),ymax=yq(ci[2])),alpha=.2)
+  for (ci in conf.int){
+    g = g + stat_summary(geom='ribbon',fun.data=median_hilow,fun.args=list(conf.int=ci),
+      kw.call(aes_string,list.update(map,fill=color,color=NULL)),alpha=.2)
   }
   g = add.meta.scales(g,list.update(map,fill=color))
   return(g)
