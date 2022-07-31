@@ -93,6 +93,7 @@ edges.sort.order = function(ii.e){
 # graph usage tools
 
 adjacent.i = function(G,i){
+  # TODO: should this just accept ii.e directly?
   i.adj = c(G$ii.e[G$ii.e[,1] %in% i,2], G$ii.e[G$ii.e[,2] %in% i,1])
 }
 
@@ -118,21 +119,27 @@ graph.layout = function(G,...){
 
 plot.graph = function(G,i.aes=list(),e.aes=list()){
   if (is.null(G$attr$g$layout)){ G$attr$g$layout = graph.layout(G) }
+  # defaults
+  i.aes = list.update(list(size=25/G$N.i^.4,shape=21),xu=i.aes)
+  e.aes = list.update(list(curvature=0,alpha=.1),xu=e.aes)
+  # required data
   i.data = setNames(data.frame(G$attr$g$layout),c('X','Y'))
   e.data = data.frame(
     X1 = i.data$X[G$ii.e[,1]],
     X2 = i.data$X[G$ii.e[,2]],
     Y1 = i.data$Y[G$ii.e[,1]],
     Y2 = i.data$Y[G$ii.e[,2]])
+  # add G$attr to data, split aes into attr vs fixed values
   if (len(G$attr$e)){ e.data = cbind(e.data,G$attr$e) }
   if (len(G$attr$i)){ i.data = cbind(i.data,G$attr$i) }
+  b.i = i.aes %in% names(G$attr$i)
+  b.e = e.aes %in% names(G$attr$e)
   g = ggplot() +
-    geom_curve(data=e.data,
-      kw.call(aes_string,x='X1',y='Y1',xend='X2',yend='Y2',e.aes),
-      curvature = .25, alpha = .1) +
-    geom_point(data=i.data,
-      kw.call(aes_string,x='X',y='Y',i.aes),
-      shape = 21, size = 25/sqrt(G$N.i)) +
+    kw.call(geom_curve,data=e.data,e.aes[!b.e],
+      map=kw.call(aes_string,e.aes[b.e],x='X1',y='Y1',xend='X2',yend='Y2')) +
+    kw.call(geom_point,data=i.data,i.aes[!b.i],
+      kw.call(aes_string,i.aes[b.i],x='X',y='Y')) +
+    guides(fill=guide_legend(override.aes=list(shape=21))) +
     coord_equal() +
     theme_void()
 }
