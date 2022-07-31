@@ -28,6 +28,15 @@ sample.strat = function(x,n,strat=NULL,weights=NULL,cap.n=TRUE){
   }
 }
 
+row.select = function(x,select){
+  # e.g. row.select(data.frame(x=c(1,2,3)),list(x=c(1,3))) -> data.frame(x=c(1,3))
+  i = rep(TRUE,nrow(x))
+  for (name in names(select)){
+    i = i & x[[name]] %in% select[[name]]
+  }
+  return(x[i,])
+}
+
 join.str = function(...){
   # e.g. join.str('a','b') -> 'a.b' -- to match split.col
   paste(...,sep='.')

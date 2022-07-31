@@ -1,57 +1,39 @@
-# TODO: clean-up .spec as module-level config
 
-.spec = list(
-  # some default colors, etc. for plotting
-  color = list(
-    'city'   = list('A'='#66ccff','B'='#4488dd','C'='#2244bb','bridge'='#cccccc'),
-    'health' = list('S'='#ffcc00','E'='#ff7700','I'='#ff0066','R'='#cc00cc','V1'='#33dd99','V2'='#009999'),
-    'src'    = list('Import'='#ff0066','Local'='#0099cc')
-  ),
-  shape = list(
-    'src' = list('Import'='square','Local'='circle')
-  )
-)
-
-.attr.cts = function(G,what,name){
-  # get continuous 'what' (node or edge) attribute named 'name'
-  if (is.numeric(name)){
-    f = name
-  } else {
-    f = get(paste0(what,'.attr.vec'))(G,name)
+add.meta.scales = function(g,map){
+  for (name in names(map)){
+    value = map[[name]]
+    if (value %in% names(M)){
+      Mi = M[[value]]
+      scale = get(paste0('scale_',name,'_manual'))
+      g = g + scale(values=Mi[[name]],labels=Mi$label,name=Mi$title)
+    }
   }
+  return(g)
 }
 
-.attr.map = function(G,what,name,spec){
-  # get 'what' (node or edge) attribute named 'name', and remap it to a .spec (e.g. 'color')
-  map = .spec[[spec]][[name]]
-  if (is.null(map)){
-    f = name
-  } else {
-    a = get(paste0(what,'.attr.vec'))(G,name)
-    f = as.character(factor(a,levels=names(map),labels=map))
-  }
-  return(f)
+plot.network = function(G,i.aes=list(),e.aes=list()){
+  g = plot.graph(G,i.aes=i.aes,e.aes=e.aes)
+  g = add.meta.scales(g,i.aes)
+  g = add.meta.scales(g,e.aes)
 }
 
-plot.epidemic = function(out.long,y='N',select=list(city='all'),intervals=.9,facet=NULL,color='health'){
+plot.epidemic = function(out.long,y='N',select=list(city='all'),intervals=.9,facet=NULL,color='health',...){
+  # TODO: clean-up intervals using stat_summary / median_hilow (?)
   # plot median for out.long[[y]], maybe after selecting some rows
   # out.long can also be out.long.s (e.g. from rbind), then we add confidence intervals (ci)
+  map = list(color=color,...)
   out.long = q3.aggr(y,c('t','health','city'),out.long,intervals=intervals) # compute the ci
   yq = function(q){ paste0(y,'.',q) } # convenience
-  ok = rep(TRUE,nrow(out.long)) # selector (initially all)
-  for (name in names(select)){
-    ok = ok & out.long[[name]] %in% select[[name]] # removing rows ...
-  }
-  g = ggplot(out.long[ok,],aes_string(x='t')) +
-    geom_line(aes_string(y=yq(.5),color=color)) +
-    scale_color_manual(values=unlist(.spec$color[[color]]),drop=FALSE) +
-    scale_fill_manual( values=unlist(.spec$color[[color]]),drop=FALSE) +
+  g = ggplot(row.select(out.long,select),aes_string(x='t')) +
+    geom_line(kw.call(aes_string,map,y=yq(.5))) +
     labs(x='Time (days)') +
     facet_grid(facet) +
     theme_light()
+  map.ci = list.update(map,fill=color,color=NULL)
   for (i in intervals){
     ci = q.interval(i)
-    g = g + geom_ribbon(aes_string(ymin=yq(ci[1]),ymax=yq(ci[2]),fill=color),alpha=.2)
+    g = g + geom_ribbon(kw.call(aes_string,map.ci,ymin=yq(ci[1]),ymax=yq(ci[2])),alpha=.2)
   }
+  g = add.meta.scales(g,list.update(map,fill=color))
   return(g)
 }

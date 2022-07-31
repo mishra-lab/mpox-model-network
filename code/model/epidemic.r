@@ -21,20 +21,20 @@ epi.init.state = function(P){ # "X"
   return(X)
 }
 
-epi.mat.init = function(P,t){
+epi.array.init = function(P,t){
   # large, complete representation: t (rows) x individuals (cols)
-  M = array(character(0),dim=c(len(t),P$N),dimnames=list('t'=t,'i'=seqn(P$N)))
+  A = array(character(0),dim=c(len(t),P$N),dimnames=list('t'=t,'i'=seqn(P$N)))
 }
 
-epi.mat.update = function(M,X,tj){
-  # update M with current state
-  M[tj,X$S]  = 'S'
-  M[tj,X$E]  = 'E'
-  M[tj,X$I]  = 'I'
-  M[tj,X$R]  = 'R'
-  M[tj,X$V1] = 'V1'
-  M[tj,X$V2] = 'V2'
-  return(M)
+epi.array.update = function(A,X,tj){
+  # update A with current state
+  A[tj,X$S]  = 'S'
+  A[tj,X$E]  = 'E'
+  A[tj,X$I]  = 'I'
+  A[tj,X$R]  = 'R'
+  A[tj,X$V1] = 'V1'
+  A[tj,X$V2] = 'V2'
+  return(A)
 }
 
 epi.do.vaccinate = function(P,X,tj){
@@ -42,7 +42,7 @@ epi.do.vaccinate = function(P,X,tj){
   Vj = list(numeric(0),numeric(0)) # dose 1, dose 2
   for (P.vax in P$vax.params.phase){ # for each vaccination phase
     if ((tj > P.vax$t0) & (tj <= P.vax$t0 + P.vax$dur)){ # is t during phase?
-      N.city.day = (P.vax$N / P.vax$dur) * P.vax$w.city # N vaccinated daily by city
+      N.city.day = (P.vax$N / P.vax$dur) * P.vax$w.city # N vaccinated daily by city # TODO: fix rounding issue
       i = switch(P.vax$dose,'1'=X$S,'2'=X$V1) # dose -> sampling from S or V1
       weights = switch(is.null(P.vax$w.attr),T=NULL,F=P$G$attr$i[[P.vax$w.attr]][i])
       # TODO: check empty args or something (rare error)
@@ -80,9 +80,9 @@ epi.run = function(P,t){
   # run the epidemic
   set.seed(P$seed)
   X = epi.init.state(P)
-  M = epi.mat.init(P,t)
+  A = epi.array.init(P,t)
   for (tj in t){
-    M = epi.mat.update(M,X,tj) # log state
+    A = epi.array.update(A,X,tj) # log state
     # computing transitions
     Vj = epi.do.vaccinate(P,X,tj) # TODO: PEP
     Sj = c(X$S,epi.do.breakthrough(P,X))
@@ -98,7 +98,7 @@ epi.run = function(P,t){
     X$S  = setdiff(X$S,c(Ej,Vj[[1]]))             # remove exposed, dose-1
     if (.debug && sum(sapply(X,len)) != P$N){ stop('len(X) != P$N') }
   }
-  return(M)
+  return(A)
 }
 
 epi.run.s = function(P.s,t,results=TRUE,parallel=TRUE){
@@ -111,32 +111,32 @@ epi.run.s = function(P.s,t,results=TRUE,parallel=TRUE){
   }
 }
 
-epi.results = function(P,t,M){
-  # collect some results (don't include M, which is large)
+epi.results = function(P,t,A){
+  # collect some results (don't include A, which is large)
   R = list()
-  P$G = epi.net.attrs(P$G,M)
+  P$G = epi.net.attrs(P$G,A)
   R$P = P
   R$t = t
-  R$out = epi.output(P,t,M)
+  R$out = epi.output(P,t,A)
   return(R)
 }
 
-epi.net.attrs = function(G,M){
+epi.net.attrs = function(G,A){
   # add some attributes to G after running the model
-  G$attr$i$inf.src = as.character(factor(M[1,]=='I',labels=c('Local','Import')))
-  G$attr$i$health  = M[length(t),]
+  G$attr$i$inf.src = factor(A[1,]=='I',levels=c(F,T),labels=M$inf.src$name)
+  G$attr$i$health  = A[length(t),]
   return(G)
 }
 
-epi.output = function(P,t,M){
+epi.output = function(P,t,A){
   # sum up the numbers of people in each state over time
-  # yields a more efficient representation of M, but loses information
+  # yields a more efficient representation of A, but loses information
   city = P$G$attr$i$city
   out = data.frame('t'=t)
-  for (h in c('S','E','I','R','V1','V2')){
-    out[[join.str(h,'all')]] = rowSums(M==h)
-    for (y in P$lab.city){
-      out[[join.str(h,y)]] = rowSums(M[,city==y]==h)
+  for (h in M$health$name){
+    out[[join.str(h,'all')]] = rowSums(A==h)
+    for (y in M$city$name){
+      out[[join.str(h,y)]] = rowSums(A[,city==y]==h)
     }
   }
   return(out)
@@ -151,7 +151,7 @@ epi.output.melt = function(out,P){
   out.long$health = as.character(out.long$health)
   out.long$city   = as.character(out.long$city)
   out.long$seed   = P$seed
-  N.city = rep(c(P$N,P$N.city),each=N.t,times=6) # NOTE: 6 from SEIRVV
+  N.city = rep(c(P$N,P$N.city),each=N.t,times=len(M$health$name))
   out.long$n.city = out.long$N / N.city # per-city prevalence
   return(out.long)
 }

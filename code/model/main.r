@@ -1,5 +1,6 @@
 source('utils/all.r')
 source('graph/graph.r')
+source('model/meta.r')
 source('model/params.r')
 source('model/epidemic.r')
 source('model/plot.r')
@@ -12,7 +13,7 @@ t = epi.t(tf=180)
 # DEBUG: run one
 # P = def.params(seed=0)
 # R = epi.results(P,t,epi.run(P,t))
-# plot.graph(R$P$G,list(fill='health')); fig.save('.tmp/network',w=7,h=7)
+# plot.network(R$P$G,list(fill='health'),list()); fig.save('.tmp/network',w=7,h=7)
 
 # build + run many
 N.s = 8
@@ -26,6 +27,7 @@ g = plot.epidemic(out.long.s,y='n.city',select=list(city=c('A','B','C'))) +
 fig.save('.tmp/prev.city',w=8,h=4)
 
 # plot networks
-for (s in seq(N.s)){
-  plot.graph(R.s[[s]]$P$G,list(fill='health',shape='src')); fig.save('.tmp/net-',s,w=7,h=7)
-}
+par.lapply(seq(N.s),function(s){
+  plot.network(R.s[[s]]$P$G,list(fill='health',shape='inf.src'))
+  fig.save('.tmp/net-',s,w=7,h=7)
+})

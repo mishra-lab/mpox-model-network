@@ -3,7 +3,6 @@ def.params = function(seed=NULL,...){
   set.seed(seed)
   P = list()
   P$seed           = seed
-  P$lab.city       = c('A','B','C') # city labels
   P$N.city         = c(100,0,0) # city pop sizes
   P$N              = sum(P$N.city) # total pop size
   P$net.dur        = 180 # period of time reflected in the net
@@ -52,7 +51,7 @@ def.params.net.city = function(N){
   return(P.net)
 }
 
-make.net.city = function(P.net,lab.city){
+make.net.city = function(P.net,city){
   # set.seed(P.net$seed) # TODO
   i = seqn(P.net$N)
   # sample degrees
@@ -73,18 +72,19 @@ make.net.city = function(P.net,lab.city){
   ii.e = rbind(ii.e.main.r,ii.e.casu.r)
   # attributes
   g.attr = list()
-  g.attr$city = lab.city
+  g.attr$city = city
   i.attr = list()
-  i.attr$city = rep(lab.city,P.net$N)
+  i.attr$city = rep(city,P.net$N)
   i.attr$par.p6m = deg.i
   e.attr = list()
   if (.debug){
     i.attr$sex.p6m = degrees.from.edges(i,ii.e)
     i.attr$main = factor(i %in% i.main,c(T,F),c('Yes','No'))
     e.attr$type = factor(c(rep('main',nrow(ii.e.main.r)),rep('casu',nrow(ii.e.casu.r))))
+    e.attr$city = rep(city,nrow(ii.e))
     kr.e = index.repeated.edges(ii.e)
-    e.attr$k.e = kr.e[,1]
-    e.attr$r.e = kr.e[,2]
+    e.attr$sex.index = kr.e[,1]
+    e.attr$sex.total = kr.e[,2]
   }
   # graph object
   G = graph.obj(ii.e=ii.e,i=i,deg.i=deg.i,g.attr=g.attr,i.attr=i.attr,e.attr=e.attr)
