@@ -81,7 +81,7 @@ epi.do.recovery = function(P,X){
 
 epi.run = function(P,t){
   # run the epidemic
-  set.seed(P$seed)
+  .Random.seed <<- P$seed.state
   X = epi.init.state(P)
   A = epi.array.init(P,t)
   for (tj in t){

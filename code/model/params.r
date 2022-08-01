@@ -27,6 +27,7 @@ def.params = function(seed=NULL,...){
     P$G = make.net.city(P$net.params.city$A,'A') # TEMP
     # P$G = make.net.multi.city(P) # TODO: rebuild
   }
+  P$seed.state = .Random.seed # current state
   return(P)
 }
 
@@ -48,7 +49,6 @@ def.params.vax.phase = function(dose,t,N.total,w.city,w.attr){
 }
 
 def.params.net.city = function(N){
-  # TODO: double check if / how seed should be used here
   P.net = list()
   P.net$N = N
   P.net$deg.shape = 0.255
@@ -64,7 +64,6 @@ def.params.net.city = function(N){
 }
 
 make.net.city = function(P.net,city){
-  # set.seed(P.net$seed) # TODO
   i = seqn(P.net$N)
   # sample degrees
   deg.i = round(rgamma(P.net$N,shape=P.net$deg.shape,P.net$deg.rate) + P.net$deg.shift)
