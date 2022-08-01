@@ -3,7 +3,7 @@ def.params = function(seed=NULL,...){
   set.seed(seed)
   P = list()
   P$seed           = seed
-  P$N.city         = c(100,0,0) # city pop sizes
+  P$N.city         = c(1000,0,0) # city pop sizes
   P$N              = sum(P$N.city) # total pop size
   P$net.dur        = 180 # period of time reflected in the net
   P$net.params.city  = list(
@@ -20,7 +20,8 @@ def.params = function(seed=NULL,...){
   P$vax.eff.dose   = c(.60,.90) # vaccine effectiveness by dose
   N.vax = .10 * P$N
   P$vax.params.phase = list( # vaccination config
-    '1' = list(t0=30,dur=20,N=N.vax,dose=1,w.city=sum1(P$N.city),w.attr=NULL))
+    '01' = def.params.vax.phase(dose=1,t=0,N.total=1*N.vax,w.city=sum1(P$N.city),w.attr=NULL),
+    '02' = def.params.vax.phase(dose=2,t=0,N.total=0*N.vax,w.city=sum1(P$N.city),w.attr=NULL))
   P = list.update(P,...) # override any of the above
   if (is.null(P$G)){
     P$G = make.net.city(P$net.params.city$A,'A') # TEMP
@@ -33,6 +34,17 @@ def.params.s = function(seeds){
   # run def.params for a number (or vector) of seeds, parallel because net gen is expensive
   if (len(seeds)==1){ seeds = seqn(seeds) }
   return(par.lapply(seeds,def.params))
+}
+
+def.params.vax.phase = function(dose,t,N.total,w.city,w.attr){
+  P.vax = list()
+  P.vax$dose = dose # 1 or 2
+  P.vax$t = t # days of the vaccination campaign
+  P.vax$N.total = N.total # total vaccines in this phase
+  P.vax$N.day.city = do.call(cbind,lapply(w.city*N.total,groups.even,N.g=len(t)))
+  P.vax$w.city = w.city # allocation by city (exact)
+  P.vax$w.attr = w.attr # allocation by individual attributes (random)
+  return(P.vax)
 }
 
 def.params.net.city = function(N){

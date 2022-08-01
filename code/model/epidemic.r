@@ -7,17 +7,22 @@ epi.t = function(t0=1,tf=180){
 }
 
 epi.init.state = function(P){ # "X"
-  i = seqn(P$N) # node indices
-  I0 = sample.strat(i,P$N.I0.city, 
+  S0 = seqn(P$N) # node indices "i"
+  I0 = sample.strat(S0,P$N.I0.city,
     strat   = P$G$attr$i$city,
     weights = P$G$attr$i$par.p6m)
+  S0 = setdiff(S0,I0)
+  V10 = epi.do.vaccinate(P,list(S=S0,V1=S0),0)[[1]]
+  S0 = setdiff(S0,V10)
+  V20 = epi.do.vaccinate(P,list(S=S0,V1=S0),0)[[2]]
+  S0 = setdiff(S0,V20)
   X = list()
-  X$S = setdiff(i,I0) # i of susceptible
-  X$E = numeric()     # i of exposed
-  X$I = I0            # i of infected
-  X$R = numeric()     # i of recovered
-  X$V1 = numeric()    # i of vaccinated 1 dose
-  X$V2 = numeric()    # i of vaccinated 2 dose
+  X$S = S0        # i of susceptible
+  X$E = numeric() # i of exposed
+  X$I = I0        # i of infected
+  X$R = numeric() # i of recovered
+  X$V1 = V10      # i of vaccinated 1 dose
+  X$V2 = V20      # i of vaccinated 2 dose
   return(X)
 }
 
@@ -39,16 +44,14 @@ epi.array.update = function(A,X,tj){
 
 epi.do.vaccinate = function(P,X,tj){
   # get i of newly vaccinated
-  Vj = list(numeric(0),numeric(0)) # dose 1, dose 2
+  Vj = list(numeric(),numeric()) # dose 1, dose 2
   for (P.vax in P$vax.params.phase){ # for each vaccination phase
-    if ((tj > P.vax$t0) & (tj <= P.vax$t0 + P.vax$dur)){ # is t during phase?
-      N.city.day = (P.vax$N / P.vax$dur) * P.vax$w.city # N vaccinated daily by city # TODO: fix rounding issue
+    b.tj = P.vax$t == tj # when is tj within P.vax$t
+    if (any(b.tj)){
       i = switch(P.vax$dose,'1'=X$S,'2'=X$V1) # dose -> sampling from S or V1
-      weights = switch(is.null(P.vax$w.attr),T=NULL,F=P$G$attr$i[[P.vax$w.attr]][i])
-      # TODO: check empty args or something (rare error)
-      Vj.phase = sample.strat(i,N.city.day, # sample by city, maybe with weights
-        strat = P$G$attr$i$city[i],
-        weights = weights)
+      w = switch(is.null(P.vax$w.attr),T=NULL,F=P$G$attr$i[[P.vax$w.attr]][i]) # weights
+      N.tj.city = P.vax$N.day.city[b.tj,] # number of doses today per city
+      Vj.phase = sample.strat(i,N.tj.city,strat=P$G$attr$i$city[i],weights=w) # sample
       Vj[[P.vax$dose]] = c(Vj[[P.vax$dose]],Vj.phase) # append vax from this phase 
     }
   }
@@ -85,17 +88,18 @@ epi.run = function(P,t){
     A = epi.array.update(A,X,tj) # log state
     # computing transitions
     Vj = epi.do.vaccinate(P,X,tj) # TODO: PEP
+    V1j = Vj[[1]]; V2j = Vj[[2]];
     Sj = c(X$S,epi.do.breakthrough(P,X))
     Ej = epi.do.expose(P,X,Sj)
     Ij = epi.do.infectious(P,X)
     Rj = epi.do.recovery(P,X)
     # applying transitions
-    X$R  = c(X$R,Rj)                              # append new recovered
-    X$I  = setdiff(c(X$I,Ij),Rj)                  # append new infectious & remove recovered
-    X$E  = setdiff(c(X$E,Ej),Ij)                  # append new exposed & remove infectious
-    X$V1 = setdiff(c(X$V1,Vj[[1]]),c(Ej,Vj[[2]])) # append new dose-1 & remove exposed, dose-2
-    X$V2 = setdiff(c(X$V2,Vj[[2]]),Ej)            # append new dose-2 & remove exposed
-    X$S  = setdiff(X$S,c(Ej,Vj[[1]]))             # remove exposed, dose-1
+    X$R  = c(X$R,Rj)                      # append new recovered
+    X$I  = setdiff(c(X$I,Ij),Rj)          # append new infectious & remove recovered
+    X$E  = setdiff(c(X$E,Ej),Ij)          # append new exposed & remove infectious
+    X$V1 = setdiff(c(X$V1,V1j),c(Ej,V2j)) # append new dose-1 & remove exposed, dose-2
+    X$V2 = setdiff(c(X$V2,V2j),Ej)        # append new dose-2 & remove exposed
+    X$S  = setdiff(X$S,c(Ej,V1j))         # remove exposed, dose-1
     if (.debug && sum(sapply(X,len)) != P$N){ stop('len(X) != P$N') }
   }
   return(A)

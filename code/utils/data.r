@@ -1,12 +1,12 @@
 # some tools for data munging
 
-seq.group = function(N.i,N.g){
+groups.even = function(N.i,N.g){
   # balanced rep(1:N.g) to total length N.i
   # e.g. seq.group(10,3) -> c(1,1,1,1, 2,2,2, 3,3,3)
   m = N.i/N.g
   r.0 = N.i %% N.g
   r.1 = N.g - r.0
-  rep(1:N.g,times=c(rep(ceiling(m),r.0),rep(floor(m),r.1)))
+  N.i.g = c(rep(ceiling(m),r.0),rep(floor(m),r.1))
 }
 
 sample.i = function(i,p){
