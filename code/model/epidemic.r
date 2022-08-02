@@ -133,15 +133,33 @@ epi.net.attrs = function(G,A){
 }
 
 epi.output = function(P,t,A){
-  # sum up the numbers of people in each state over time
+  # computs some pre-determined outputs from A, usually stratified by health & city
   # yields a more efficient representation of A, but loses information
-  city = P$G$attr$i$city
+  # TODO: maybe save A (compressed somehow?) to avoid information loss + compute outputs on the fly
   out = data.frame('t'=t)
-  for (h in M$health$name){
-    out[[join.str(h,'all')]] = rowSums(A==h)
-    for (y in M$city$name){
-      out[[join.str(h,y)]] = rowSums(A[,city==y]==h)
+  # function compute outputs overall + by city (as list)
+  sum.city.fun = function(num,den=1,...){
+    out[[join.str(...,'all')]] = rowSums(num) / { if (is.matrix(den)) rowSums(den) else den }
+    for (city in M$city$name){
+      b.city = P$G$attr$i$city==city
+      out[[join.str(...,city)]] = rowSums(num[,b.city]) / { if (is.matrix(den)) rowSums(den[,b.city]) else den }
     }
+    return(out)
+  }
+  # absolute (N), prevalence (prev)
+  A1 = matrix(1,nrow=nrow(A),ncol=ncol(A))
+  out = sum.city.fun(A!='',1,'N','all')
+  for (h in M$health$name){
+    out = sum.city.fun(A==h,1,'N',h)
+    out = sum.city.fun(A==h,A1,'prev',h)
+  }
+  # absolute incidence (inc)
+  h.sus = c('S','V1','V2')
+  A.1 = A[(2:len(t))-1,]
+  A.E = A[(2:len(t)),] == 'E'
+  out = sum.city.fun(rbind(A.1 %in% h.sus & A.E,NA),1,'inc','all')
+  for (h in h.sus){
+    out = sum.city.fun(rbind(A.1==h & A.E,NA),1,'inc',h)
   }
   return(out)
 }
@@ -150,13 +168,8 @@ epi.output.melt = function(out,P){
   # melt the data in out (usually for plotting)
   N.t = nrow(out)
   out.long = melt(out,id.vars='t')
-  out.long = rename.cols(out.long,value='N')
-  out.long = split.col(out.long,'variable',c('health','city'),del=TRUE)
-  out.long$health = as.character(out.long$health)
-  out.long$city   = as.character(out.long$city)
-  out.long$seed   = P$seed
-  N.city = rep(c(P$N,P$N.city),each=N.t,times=len(M$health$name))
-  out.long$n.city = out.long$N / N.city # per-city prevalence
+  out.long = split.col(out.long,'variable',c('var','health','city'),del=TRUE)
+  out.long$seed = P$seed
   return(out.long)
 }
 

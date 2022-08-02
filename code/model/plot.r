@@ -17,11 +17,12 @@ plot.network = function(G,i.aes=list(),e.aes=list()){
   g = add.meta.scales(g,e.aes)
 }
 
-plot.epidemic = function(out.long,y='N',select=list(city='all'),conf.int=.9,facet=NULL,color='health',...){
-  # plot median for out.long[[y]], maybe after selecting some rows
+plot.epidemic = function(out.long,select=list(),conf.int=.9,facet=NULL,color='health',...){
+  # plot median for out.long$value, after selecting some rows
   # out.long can also be out.long.s (e.g. from rbind), then we add confidence intervals (ci)
+  select = list.update(list(var='N',city='all'),select)
   map = list(color=color,...)
-  g = ggplot(row.select(out.long,select),aes_string(x='t',y=y)) +
+  g = ggplot(row.select(out.long,select),aes_string(x='t',y='value')) +
     stat_summary(geom='line',fun=median,kw.call(aes_string,map)) +
     labs(x='Time (days)') +
     facet_grid(facet) +
