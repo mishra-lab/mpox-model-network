@@ -1,5 +1,13 @@
 # some tools for data munging
 
+int.cut = function(x,low){
+  # cut with simplified labels assuming integer data
+  # e.g. int.cut(seq(6),c(1,2,3,5)) -> c("1","2","3 - 4", "3 - 4","5 +","5 +")
+  high = c(low[2:len(low)]-1,Inf)
+  labels = gsub('- Inf','+',ifelse(low==high,low,paste(low,'-',high)))
+  x.cut = cut(x,breaks=c(low,Inf),labels=labels,right=FALSE)
+}
+
 groups.even = function(N.i,N.g){
   # balanced rep(1:N.g) to total length N.i
   # e.g. seq.group(10,3) -> c(1,1,1,1, 2,2,2, 3,3,3)

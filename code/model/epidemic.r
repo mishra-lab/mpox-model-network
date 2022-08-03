@@ -28,7 +28,7 @@ epi.init.state = function(P){ # "X"
 
 epi.array.init = function(P,t){
   # large, complete representation: t (rows) x individuals (cols)
-  A = array(character(0),dim=c(len(t),P$N),dimnames=list('t'=t,'i'=seqn(P$N)))
+  A = dn.array(list('t'=t,'i'=seqn(P$N),character())
 }
 
 epi.array.update = function(A,X,tj){
