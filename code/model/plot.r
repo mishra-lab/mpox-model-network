@@ -17,6 +17,21 @@ plot.network = function(G,i.aes=list(),e.aes=list()){
   g = add.meta.scales(g,e.aes)
 }
 
+plot.distribution = function(P.s,gie,attr,vals,select=list(),...){
+  # plot distribution(s) of attributes in P$G (or P.s)
+  # note: no geom by default for flexibility; we just collect the histogram data
+  if ('G' %in% names(P.s)){ P.s = list(P.s) }
+  f = formula(paste('.','~',paste(c(attr,'seed',...),collapse=' + ')))
+  data.raw = do.call(rbind,lapply(P.s,function(P){
+    cbind('seed'=P$seed,'.'=1,as.data.frame(P$G$attr[[gie]]))
+  }))
+  data = aggregate(f,row.select(data.raw,select),sum)
+  data$x.cut = int.cut(data[[attr]],vals)
+  g = ggplot(row.select(data,select),aes_string(x='x.cut',y='.',...)) +
+    theme_light()
+  g = add.meta.scales(g,list(...))
+}
+
 plot.epidemic = function(out.long,select=list(),conf.int=.9,facet=NULL,color='health',...){
   # plot median for out.long$value, after selecting some rows
   # out.long can also be out.long.s (e.g. from rbind), then we add confidence intervals (ci)
