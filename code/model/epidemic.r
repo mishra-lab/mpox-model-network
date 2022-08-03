@@ -118,14 +118,14 @@ epi.run.s = function(P.s,t,results=TRUE,parallel=TRUE){
 epi.results = function(P,t,A){
   # collect some results (don't include A, which is large)
   R = list()
-  P$G = epi.net.attrs(P$G,A)
+  P$G = epi.net.attrs(P$G,A,t)
   R$P = P
   R$t = t
   R$out = epi.output(P,t,A)
   return(R)
 }
 
-epi.net.attrs = function(G,A){
+epi.net.attrs = function(G,A,t){
   # add some attributes to G after running the model
   G$attr$i$inf.src = factor(A[1,]=='I',levels=c(F,T),labels=M$inf.src$name)
   G$attr$i$health  = A[length(t),]
