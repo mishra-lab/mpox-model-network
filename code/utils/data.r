@@ -8,6 +8,11 @@ int.cut = function(x,low){
   x.cut = cut(x,breaks=c(low,Inf),labels=labels,right=FALSE)
 }
 
+cumsum.n = function(x,n){
+  g = rep(1:n,each=len(x)/n)
+  x.cs = unlist(lapply(split(x,g),cumsum))
+}
+
 groups.even = function(N.i,N.g){
   # balanced rep(1:N.g) to total length N.i
   # e.g. seq.group(10,3) -> c(1,1,1,1, 2,2,2, 3,3,3)
@@ -36,9 +41,10 @@ sample.strat = function(x,n,strat=NULL,weights=NULL,cap.n=TRUE){
   }
 }
 
-row.select = function(x,select){
+row.select = function(x,select=list(),...){
   # e.g. row.select(data.frame(x=c(1,2,3)),list(x=c(1,3))) -> data.frame(x=c(1,3))
   i = rep(TRUE,nrow(x))
+  select = list.update(select,...)
   for (name in names(select)){
     i = i & x[[name]] %in% select[[name]]
   }
