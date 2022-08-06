@@ -1,7 +1,5 @@
 library('reshape2')
 
-# TODO: negative indices instead of setiff, faster ?
-
 epi.t = function(t0=1,tf=180){
   t = seq(t0,tf)
 }
@@ -19,17 +17,19 @@ epi.random.init = function(P,t){
 
 epi.init.state = function(P){
   S0 = seqn(P$N) # node indices "i"
-  I0 = sample(S0,P$N.I0,p=P$G$attr$i$par)
+  I0 = sample(S0,P$N.I0,p=P$G$attr$i$par[S0])
   S0 = setdiff(S0,I0)
-  V0 = sample(S0,P$N.V0)
-  S0 = setdiff(S0,V0)
+  V10 = sample(S0,P$N.V10,p=P$G$attr$i$par[S0])
+  S0 = setdiff(S0,V10)
+  V20 = sample(S0,P$N.V20,p=P$G$attr$i$par[S0])
+  S0 = setdiff(S0,V20)
   X = list()
   X$S = S0        # i of susceptible
   X$E = numeric() # i of exposed
   X$I = I0        # i of infected
   X$R = numeric() # i of recovered
-  X$V1 = V0       # i of vaccinated 1 dose
-  X$V2 = numeric()# i of vaccinated 2 dose
+  X$V1 = V10      # i of vaccinated 1 dose
+  X$V2 = V20      # i of vaccinated 2 dose
   return(X)
 }
 
@@ -51,10 +51,9 @@ epi.array.update = function(A,tj,X){
 
 epi.do.expose = function(P,U,tj,X){
   # get i of newly infected
-  # TODO: breakthrough / vaccination (currently 100% eff due to implementation)
   r = rle(sort(adjacent.i(P$G,X$I)))
-  Ej = r$values[U$S.E[tj,r$values] < 1-(1-P$beta/P$net.dur)^r$lengths]
-  Ej = intersect(Ej,X$S)
+  beta = rep(P$beta.health,lengths(X))[match(r$values,unlist(X))]
+  Ej = r$values[U$S.E[tj,r$values] < 1-(1-beta/P$net.dur)^r$lengths]
 }
 
 epi.do.onset = function(P,U,tj,X){
@@ -83,7 +82,9 @@ epi.run = function(P,t){
     X$I  = setdiff(c(X$I,Ij),Rj)          # append new infectious & remove recovered
     X$E  = setdiff(c(X$E,Ej),Ij)          # append new exposed & remove infectious
     X$S  = setdiff(X$S,Ej)                # remove exposed
-    if (.debug && sum(sapply(X,len)) != P$N){ stop('len(X) != P$N') }
+    X$V1 = setdiff(X$V1,Ej)               # remove exposed
+    X$V2 = setdiff(X$V2,Ej)               # remove exposed
+    if (.debug && sum(lengths(X)) != P$N){ stop('len(X) != P$N') }
   }
   return(epi.results(P,t,A))
 }
