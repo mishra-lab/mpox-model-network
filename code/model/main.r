@@ -22,10 +22,9 @@ R.s = epi.run.s(P.s,t)
 out.long.s = epi.output.melt.s(R.s,P.s)
 
 # plot prevalence
-g = plot.epidemic(out.long.s,select=list(var='N',health=c('S','E','I','R'))) +
+g = plot.epidemic(out.long.s,select=list(var='N',health=c('S','E','I','R','V1','V2'))) +
   labs(y='Count',color='State',fill='State') +
   facet_wrap('~health',scales='free_y')
-  print(g); q()
   fig.save('.tmp/health',w=10,h=6,ext='png')
 g = plot.epidemic(out.long.s,select=list(var='inc',health='all')) +
   labs(y='Incidence',color='State',fill='State')
