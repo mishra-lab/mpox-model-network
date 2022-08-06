@@ -6,9 +6,19 @@ epi.t = function(t0=1,tf=180){
   t = seq(t0,tf)
 }
 
-epi.init.state = function(P){ # "X"
+epi.random.init = function(P,t){
+  .Random.seed <<- P$seed.state
+  dn = list('t'=t,'i'=seqn(P$N))
+  N.U = len(t) * P$N
+  U = list()
+  U$S.E = dn.array(dn,runif(N.U))
+  U$E.I = dn.array(dn,runif(N.U))
+  U$I.R = dn.array(dn,runif(N.U))
+  return(U)
+}
+
+epi.init.state = function(P){
   S0 = seqn(P$N) # node indices "i"
-  I0 = sample(S0,P$N.I0,p=P$G$attr$i$par)
   I0 = sample(S0,P$N.I0,p=P$G$attr$i$par)
   S0 = setdiff(S0,I0)
   V0 = sample(S0,P$N.V0)
@@ -39,39 +49,35 @@ epi.array.update = function(A,tj,X){
   return(A)
 }
 
-epi.do.breakthrough = function(P,X){
-  # get i of vaccinated who could experience breakthrough - TODO: can this be done (faster) via p?
-  VSj = c(sample.i(X$V1,1-P$vax.eff.dose[1]),sample.i(X$V2,1-P$vax.eff.dose[2]))
-}
-
-epi.do.expose = function(P,X,Sj){
+epi.do.expose = function(P,U,tj,X){
   # get i of newly infected
-  Ej = sample.i(unlist(adjacent.i(P$G,X$I)),P$beta/P$net.dur)
-  Ej = unique(intersect(Ej,Sj)) # unique exposed who are susceptible
+  # TODO: breakthrough / vaccination (currently 100% eff due to implementation)
+  r = rle(sort(adjacent.i(P$G,X$I)))
+  Ej = r$values[U$S.E[tj,r$values] < 1-(1-P$beta/P$net.dur)^r$lengths]
+  Ej = intersect(Ej,X$S)
 }
 
-epi.do.infectious = function(P,X){
-  # get i of infectious
-  Ij = sample.i(X$E,1/P$dur.exp)
+epi.do.onset = function(P,U,tj,X){
+  # get i of newly infectious / symptomatic (assumed same)
+  Ij = X$E[U$E.I[tj,X$E] < 1/P$dur.exp]
 }
 
-epi.do.recovery = function(P,X){
+epi.do.recovery = function(P,U,tj,X){
   # get i of recovered
-  Rj = sample.i(X$I,1/P$dur.inf)
+  Rj = X$I[U$I.R[tj,X$I] < 1/P$dur.inf]
 }
 
 epi.run = function(P,t){
   # run the epidemic
-  .Random.seed <<- P$seed.state
+  U = epi.random.init(P,t)
   X = epi.init.state(P)
   A = epi.array.init(P,t)
   for (tj in t){
     A = epi.array.update(A,tj,X) # log state
     # computing transitions
-    Sj = c(X$S,epi.do.breakthrough(P,X))
-    Ej = epi.do.expose(P,X,Sj)
-    Ij = epi.do.infectious(P,X)
-    Rj = epi.do.recovery(P,X)
+    Ej = epi.do.expose(P,U,tj,X)
+    Ij = epi.do.onset(P,U,tj,X)
+    Rj = epi.do.recovery(P,U,tj,X)
     # applying transitions
     X$R  = c(X$R,Rj)                      # append new recovered
     X$I  = setdiff(c(X$I,Ij),Rj)          # append new infectious & remove recovered
@@ -85,7 +91,7 @@ epi.run = function(P,t){
 epi.run.s = function(P.s,t,parallel=TRUE){
   # run for multiple seeds, and usually compute the results immediately too
   if (parallel){ lapply.fun = par.lapply } else { lapply.fun = lapply }
-  R.s = lapply.fun(P.s,function(P){ epi.run(P,t,A) })
+  R.s = lapply.fun(P.s,function(P){ epi.run(P,t) })
 }
 
 epi.results = function(P,t,A){
