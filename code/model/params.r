@@ -31,10 +31,10 @@ def.params = function(seed=NULL,...){
   return(P)
 }
 
-def.params.s = function(seeds){
+def.params.s = function(seeds,...){
   # run def.params for a number (or vector) of seeds, parallel because net gen is expensive
   if (len(seeds)==1){ seeds = seqn(seeds) }
-  return(par.lapply(seeds,def.params))
+  P.s = par.lapply(seeds,def.params,...)
 }
 
 def.params.vax.phase = function(dose,t,N.total,w.city,w.attr){
