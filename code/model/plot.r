@@ -35,7 +35,7 @@ plot.distribution = function(P.s,gie,attr,vals,select=list(),...){
 plot.epidemic = function(out.long,select=list(),conf.int=.9,facet=NULL,color='health',...){
   # plot median for out.long$value, after selecting some rows
   # out.long can also be out.long.s (e.g. from rbind), then we add confidence intervals (ci)
-  select = list.update(list(var='N',city='all'),select)
+  select = list.update(list(var='N'),select)
   map = list(color=color,...)
   g = ggplot(row.select(out.long,select),aes_string(x='t',y='value')) +
     stat_summary(geom='line',fun=median,kw.call(aes_string,map)) +
