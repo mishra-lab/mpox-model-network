@@ -16,7 +16,7 @@ t = epi.t(tf=180)
 # plot.network(R$P$G,list(fill='health'),list()); fig.save('.tmp/network',w=8,h=6)
 
 # build + run many
-N.s = 8
+N.s = 7
 P.s = def.params.s(N.s)
 R.s = epi.run.s(P.s,t)
 out.long.s = epi.output.melt.s(R.s,P.s)

@@ -1,9 +1,9 @@
 
-def.params = function(seed=NULL,...){
+def.params = function(seed=NULL,N=1000,...){
   set.seed(seed)
   P = list()
   P$seed           = seed
-  P$N              = 1000 # pop size total
+  P$N              = N # pop size total
   P$net.dur        = 6*30 # period of time reflected in the sexual network
   P$net.params     = def.params.net(P$N) # params for network
   P$N.I0           = 10 # number initially infected
