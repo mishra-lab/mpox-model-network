@@ -12,8 +12,7 @@ def.params = function(seed=NULL,N=1000,...){
   P$dur.inf        = 7 # average duration infectious (considering isolation) - expon distrib
   P$beta           = .90 # probability of transmission (per contact)
   P$vax.eff.dose   = c(.60,.90) # vaccine effectiveness by dose
-  P$N.V10          = .00 * P$N # total number initially vaccinated, 1st dose
-  P$N.V20          = .00 * P$N # total number initially vaccinated, 2nd dose
+  P$N.V0           = c(.00,.00) * P$N # total number initially vaccinated by dose
   P = list.update(P,...) # override any of the above
   # conditional parameters
   if (is.null(P$G)){ P$G = make.net(P$net.params) } # generate the sexual network

@@ -8,8 +8,9 @@ int.cut = function(x,low){
   x.cut = cut(x,breaks=c(low,Inf),labels=labels,right=FALSE)
 }
 
-cumsum.n = function(x,n){
-  g = rep(1:n,each=len(x)/n)
+cumsum.len = function(x,l,n){
+  if (missing(l)){ l = len(x)/n }
+  g = rep(1:n,each=l)
   x.cs = unlist(lapply(split(x,g),cumsum))
 }
 

@@ -19,7 +19,7 @@ t = epi.t(tf=180)
 N.s = 7
 P.s = def.params.s(N.s)
 R.s = epi.run.s(P.s,t)
-out.long.s = epi.output.melt.s(R.s,P.s)
+out.long.s = epi.output.melt.s(R.s)
 
 # plot prevalence
 g = plot.epidemic(out.long.s,select=list(var='N',health=c('S','E','I','R','V1','V2'))) +

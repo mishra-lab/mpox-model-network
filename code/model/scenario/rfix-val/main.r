@@ -9,10 +9,10 @@ library('gganimate')
 .debug = TRUE
 tf = 60
 t.vec = epi.t(tf=tf)
-P.def = list(seed=5,N=50,N.I0=5,N.V10=0,N.V20=0)
+P.def = list(seed=5,N=50,N.I0=5,N.V0=c(0,0))
 G  = kw.call(def.params,P.def)$G
-R0 = epi.run(kw.call(def.params,P.def,N.V10=0,G=G),t.vec)
-R1 = epi.run(kw.call(def.params,P.def,N.V10=5,G=G),t.vec)
+R0 = epi.run(kw.call(def.params,P.def,N.V0=c(0,0),G=G),t.vec)
+R1 = epi.run(kw.call(def.params,P.def,N.V0=c(5,0),G=G),t.vec)
 # update G$attr
 G$attr$i$t = rep(t.vec,each=G$N.i)
 G$attr$e$t = rep(t.vec,each=G$N.e)

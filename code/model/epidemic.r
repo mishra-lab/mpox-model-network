@@ -19,9 +19,9 @@ epi.init.state = function(P){
   S0 = seqn(P$N) # node indices "i"
   I0 = sample(S0,P$N.I0,p=P$G$attr$i$par[S0])
   S0 = setdiff(S0,I0)
-  V10 = sample(S0,P$N.V10,p=P$G$attr$i$par[S0])
+  V10 = sample(S0,min(P$N.V0[1],len(S0)))
   S0 = setdiff(S0,V10)
-  V20 = sample(S0,P$N.V20,p=P$G$attr$i$par[S0])
+  V20 = sample(S0,min(P$N.V0[2],len(S0)))
   S0 = setdiff(S0,V20)
   X = list()
   X$S = S0        # i of susceptible
@@ -92,7 +92,7 @@ epi.run = function(P,t){
 epi.run.s = function(P.s,t,parallel=TRUE){
   # run for multiple seeds, and usually compute the results immediately too
   if (parallel){ lapply.fun = par.lapply } else { lapply.fun = lapply }
-  R.s = lapply.fun(P.s,function(P){ epi.run(P,t) })
+  R.s = lapply.fun(P.s,function(P){ R = epi.run(P,t) })
 }
 
 epi.results = function(P,t,A){
@@ -150,9 +150,9 @@ epi.output.melt = function(out,P){
   return(out.long)
 }
 
-epi.output.melt.s = function(R.s,P.s){
+epi.output.melt.s = function(R.s){
   # apply epi.output.melt to a list of R.s -- e.g. from epi.run.s
-  out.long.s = kw.call(rbind,lapply(P.s,function(P){
-    out.long = epi.output.melt(R.s[[P$seed]]$out,P)
+  out.long.s = kw.call(rbind,lapply(R.s,function(R){
+    out.long = epi.output.melt(R$out,R$P)
   }))
 }
