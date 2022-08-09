@@ -24,12 +24,13 @@ epi.init.state = function(P){
   V20 = sample(S0,min(P$N.V0[2],len(S0)))
   S0 = setdiff(S0,V20)
   X = list()
-  X$S = S0        # i of susceptible
-  X$E = numeric() # i of exposed
-  X$I = I0        # i of infected
-  X$R = numeric() # i of recovered
-  X$V1 = V10      # i of vaccinated 1 dose
-  X$V2 = V20      # i of vaccinated 2 dose
+  X$N = list()
+  X$N$S = S0        # i of susceptible
+  X$N$E = numeric() # i of exposed
+  X$N$I = I0        # i of infected
+  X$N$R = numeric() # i of recovered
+  X$N$V1 = V10      # i of vaccinated 1 dose
+  X$N$V2 = V20      # i of vaccinated 2 dose
   return(X)
 }
 
@@ -38,32 +39,32 @@ epi.array.init = function(P,t){
   A = dn.array(list('t'=t,'i'=seqn(P$N)),character())
 }
 
-epi.array.update = function(A,tj,X){
+epi.array.update = function(A,tj,XN){
   # update A with current state
-  A[tj,X$S]  = 'S'
-  A[tj,X$E]  = 'E'
-  A[tj,X$I]  = 'I'
-  A[tj,X$R]  = 'R'
-  A[tj,X$V1] = 'V1'
-  A[tj,X$V2] = 'V2'
+  A[tj,XN$S]  = 'S'
+  A[tj,XN$E]  = 'E'
+  A[tj,XN$I]  = 'I'
+  A[tj,XN$R]  = 'R'
+  A[tj,XN$V1] = 'V1'
+  A[tj,XN$V2] = 'V2'
   return(A)
 }
 
-epi.do.expose = function(P,U,tj,X){
+epi.do.expose = function(P,U,tj,XN){
   # get i of newly infected
-  r = rle(sort(adjacent.i(P$G,X$I)))
-  beta = rep(P$beta.health,lengths(X))[match(r$values,unlist(X))]
+  r = rle(sort(adjacent.i(P$G,XN$I)))
+  beta = rep(P$beta.health,lengths(XN))[match(r$values,unlist(XN))]
   Ej = r$values[U$S.E[tj,r$values] < 1-(1-beta/P$net.dur)^r$lengths]
 }
 
-epi.do.onset = function(P,U,tj,X){
+epi.do.onset = function(P,U,tj,XN){
   # get i of newly infectious / symptomatic (assumed same)
-  Ij = X$E[U$E.I[tj,X$E] < 1/P$dur.exp]
+  Ij = XN$E[U$E.I[tj,XN$E] < 1/P$dur.exp]
 }
 
-epi.do.recovery = function(P,U,tj,X){
+epi.do.recovery = function(P,U,tj,XN){
   # get i of recovered
-  Rj = X$I[U$I.R[tj,X$I] < 1/P$dur.inf]
+  Rj = XN$I[U$I.R[tj,XN$I] < 1/P$dur.inf]
 }
 
 epi.run = function(P,t){
@@ -72,19 +73,19 @@ epi.run = function(P,t){
   X = epi.init.state(P)
   A = epi.array.init(P,t)
   for (tj in t){
-    A = epi.array.update(A,tj,X) # log state
+    A = epi.array.update(A,tj,X$N) # log state
     # computing transitions
-    Ej = epi.do.expose(P,U,tj,X)
-    Ij = epi.do.onset(P,U,tj,X)
-    Rj = epi.do.recovery(P,U,tj,X)
+    Ej = epi.do.expose(P,U,tj,X$N)
+    Ij = epi.do.onset(P,U,tj,X$N)
+    Rj = epi.do.recovery(P,U,tj,X$N)
     # applying transitions
-    X$R  = c(X$R,Rj)                      # append new recovered
-    X$I  = setdiff(c(X$I,Ij),Rj)          # append new infectious & remove recovered
-    X$E  = setdiff(c(X$E,Ej),Ij)          # append new exposed & remove infectious
-    X$S  = setdiff(X$S,Ej)                # remove exposed
-    X$V1 = setdiff(X$V1,Ej)               # remove exposed
-    X$V2 = setdiff(X$V2,Ej)               # remove exposed
-    if (.debug && sum(lengths(X)) != P$N){ stop('len(X) != P$N') }
+    X$N$R  = c(X$N$R,Rj)                      # append new recovered
+    X$N$I  = setdiff(c(X$N$I,Ij),Rj)          # append new infectious & remove recovered
+    X$N$E  = setdiff(c(X$N$E,Ej),Ij)          # append new exposed & remove infectious
+    X$N$S  = setdiff(X$N$S,Ej)                # remove exposed
+    X$N$V1 = setdiff(X$N$V1,Ej)               # remove exposed
+    X$N$V2 = setdiff(X$N$V2,Ej)               # remove exposed
+    if (.debug && sum(lengths(X$N)) != P$N){ stop('len(X$N) != P$N') }
   }
   return(epi.results(P,t,A))
 }
