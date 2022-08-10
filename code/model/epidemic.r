@@ -8,15 +8,12 @@ epi.t = function(t0=1,tf=180){
 
 epi.random.init = function(P,t){
   .Random.seed <<- P$seed.state
-  dn.i = list('t'=t,'i'=P$G$i)
-  dn.e = list('t'=t,'e'=P$G$e)
   U = list()
   f.sex.e = P$G$attr$e$sex / P$G$attr$g$dur # sex frequency per partnership
   U$e.sex.t = lapply(t,function(tj){ which(runif(P$G$N.e) < f.sex.e) }) # partners had sex per day
   U$u.sex.t = lapply(U$e.sex.t,runif) # random number per sex day
-  U$u.EI.ti = dn.array(dn.i,runif(len(t)*P$N)) # random number per person day (onset)
-  U$u.IR.ti = dn.array(dn.i,runif(len(t)*P$N)) # random number per person day (recovery)
-  # TODO: replace large u.XX.ti above with version based on days since infection, or something
+  U$dur.exp.i = rexp(P$N,1/P$dur.exp) # random durations to onset per-person
+  U$dur.inf.i = rexp(P$N,1/P$dur.inf) # random durations to recovery per-person
   return(U)
 }
 
@@ -36,6 +33,7 @@ epi.init.state = function(P){
   X$i$R = numeric() # i of recovered
   X$i$V1 = V10      # i of vaccinated 1 dose
   X$i$V2 = V20      # i of vaccinated 2 dose
+  X$dur = numeric(P$N) # duration in current state
   return(X)
 }
 
@@ -67,14 +65,14 @@ epi.do.expose = function(P,U,tj,Xi){
   Ej = unique(i.Z[u.sex < beta])
 }
 
-epi.do.onset = function(P,U,tj,Xi){
+epi.do.onset = function(P,U,tj,X){
   # get i of newly infectious / symptomatic (assumed same)
-  Ij = Xi$E[U$u.EI.ti[tj,Xi$E] < 1/P$dur.exp]
+  Ij = X$i$E[X$dur[X$i$E] > U$dur.exp.i[X$i$E]]
 }
 
-epi.do.recovery = function(P,U,tj,Xi){
+epi.do.recovery = function(P,U,tj,X){
   # get i of recovered
-  Rj = Xi$I[U$u.IR.ti[tj,Xi$I] < 1/P$dur.inf]
+  Rj = X$i$I[X$dur[X$i$I] > U$dur.inf.i[X$i$I]]
 }
 
 epi.run = function(P,t){
@@ -86,8 +84,8 @@ epi.run = function(P,t){
     A = epi.array.update(A,tj,X$i) # log state
     # computing transitions
     Ej = epi.do.expose(P,U,tj,X$i)
-    Ij = epi.do.onset(P,U,tj,X$i)
-    Rj = epi.do.recovery(P,U,tj,X$i)
+    Ij = epi.do.onset(P,U,tj,X)
+    Rj = epi.do.recovery(P,U,tj,X)
     # applying transitions
     X$i$R  = c(X$i$R,Rj)                      # append new recovered
     X$i$I  = setdiff(c(X$i$I,Ij),Rj)          # append new infectious & remove recovered
@@ -95,6 +93,9 @@ epi.run = function(P,t){
     X$i$S  = setdiff(X$i$S,Ej)                # remove exposed
     X$i$V1 = setdiff(X$i$V1,Ej)               # remove exposed
     X$i$V2 = setdiff(X$i$V2,Ej)               # remove exposed
+    # update durations
+    X$dur[c(Ej,Ij,Rj)] = 0
+    X$dur = X$dur + 1
     if (.debug && sum(lengths(X$i)) != P$N){ stop('len(X$i) != P$N') }
   }
   return(epi.results(P,t,A))
