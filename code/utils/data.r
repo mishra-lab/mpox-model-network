@@ -66,3 +66,10 @@ split.col = function(x,col,new.names,del=TRUE){
   if (del){ x[[col]] = NULL }
   return(x)
 }
+
+r.fun = function(fun,...,shift=0){
+  # pre-specify some arguments to random number generating fun
+  # e.g. f = partial(runif,min=1,max=2); f(n=10) -> runif(n=10,min=1,max=2)
+  args = list(...)
+  rfun = function(...){ kw.call(fun,args,...) + shift }
+}

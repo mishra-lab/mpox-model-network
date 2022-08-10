@@ -30,17 +30,11 @@ def.params.net = function(N){
   P.net = list()
   P.net$N = N
   P.net$dur = 6*30 # period of time reflected in the sexual network
-  P.net$par.gam.shape = 0.255 # gamma distrib: partners in 6 months
-  P.net$par.gam.rate  = 0.032 # gamma distrib: partners in 6 months
-  P.net$par.gam.shift = 0.913 # gamma distrib: partners in 6 months
+  P.net$par.rfun = r.fun(rgamma,shape=0.255,rate=0.032,shift=0.913) # partners in p6m
   P.net$main.i.frac = .2 # fraction of pop who have main partners
   P.net$main.w.par.power = -1 # when chosing who has main partners: weights = p6m ^ power
-  P.net$main.sex.gam.shape = 5  # gamma distrib: sex per main partner in 6 months
-  P.net$main.sex.gam.rate  = .2 # gamma distrib: sex per main partner in 6 months
-  P.net$main.sex.gam.shift = 1  # gamma distrib: sex per main partner in 6 months
-  P.net$casu.sex.gam.shape = .3 # gamma distrib: pex per casu partner in 6 months
-  P.net$casu.sex.gam.rate  = .3 # gamma distrib: pex per casu partner in 6 months
-  P.net$casu.sex.gam.shift = 1  # gamma distrib: pex per casu partner in 6 months
+  P.net$main.sex.rfun = r.fun(rgamma,shape=5,rate=.2,shift=1) # sex per main partner in p6m
+  P.net$casu.sex.rfun = r.fun(rgamma,shape=.3,rate=.3,shift=1) # sex per main partner in p6m
   return(P.net)
 }
 
@@ -49,17 +43,17 @@ make.net = function(P.net){
   # including multiple contacts per partnership
   i = seqn(P.net$N)
   # sample total partners in 6 months
-  par.i = round(rgamma(P.net$N,P.net$par.gam.shape,P.net$par.gam.rate) + P.net$par.gam.shift)
+  par.i = round(P.net$par.rfun(P.net$N))
   par.i = degrees.balanced(par.i)
   # generate main partners
   i.main = sample(i,round(P.net$main.i.frac*P.net$N),p=par.i^P.net$main.w.par.power) # who
   ii.e.main = edges.random(i.main,shuffle=FALSE) # edges = pairs
-  sex.e.main = round(rgamma(nrow(ii.e.main),P.net$main.sex.gam.shape,P.net$main.sex.gam.rate) + P.net$main.sex.gam.shift)
+  sex.e.main = round(P.net$main.sex.rfun(nrow(ii.e.main)))
   # generate casual partners
   par.i.casu = par.i
   par.i.casu[i.main] = par.i.casu[i.main] - 1 # non-main partners
   ii.e.casu = edges.unloop(edges.from.degrees(i,par.i.casu)) # edges = pairs
-  sex.e.casu = round(rgamma(nrow(ii.e.casu),P.net$casu.sex.gam.shape,P.net$casu.sex.gam.rate) + P.net$casu.sex.gam.shift)
+  sex.e.casu = round(P.net$casu.sex.rfun(nrow(ii.e.casu)))
   # all contacts
   ii.e = rbind(ii.e.main,ii.e.casu)
   sex.e = c(sex.e.main,sex.e.casu)
