@@ -22,6 +22,7 @@ graph.obj = function(ii.e,i=NULL,deg.i=NULL,g.attr=NULL,i.attr=NULL,e.attr=NULL)
   G$N.i = len(i)
   G$N.e = nrow(ii.e)
   G$i = i
+  G$e = seqn(G$N.e)
   G$ii.e = ii.e
   G$deg.i = deg.i
   G$attr = list()
@@ -87,14 +88,6 @@ edges.low.high = function(ii.e){
 
 edges.sort.order = function(ii.e){
   return(order(ii.e[,1],ii.e[,2]))
-}
-
-# ==================================================================================================
-# graph usage tools
-
-adjacent.i = function(G,i){
-  # TODO: should this just accept ii.e directly?
-  i.adj = c(G$ii.e[G$ii.e[,1] %in% i,2], G$ii.e[G$ii.e[,2] %in% i,1])
 }
 
 # ==================================================================================================
