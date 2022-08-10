@@ -14,6 +14,7 @@ epi.random.init = function(P,t){
   U$u.sex.t = lapply(U$e.sex.t,runif) # random number per sex day
   U$dur.exp.i = P$dur.exp.rfun(P$N) # random durations to onset per-person
   U$dur.inf.i = P$dur.inf.rfun(P$N) # random durations to recovery per-person
+  U$dur.iso.i = P$dur.iso.rfun(P$N) # random durations to isolation per-person
   return(U)
 }
 
@@ -71,8 +72,8 @@ epi.do.onset = function(P,U,tj,X){
 }
 
 epi.do.recovery = function(P,U,tj,X){
-  # get i of recovered
-  Rj = X$i$I[X$dur[X$i$I] > U$dur.inf.i[X$i$I]]
+  # get i of recovered (or isolating)
+  Rj = X$i$I[X$dur[X$i$I] > U$dur.inf.i[X$i$I] | X$dur[X$i$I] > U$dur.iso.i[X$i$I]]
 }
 
 epi.run = function(P,t){
