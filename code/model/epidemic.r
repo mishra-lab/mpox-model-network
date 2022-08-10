@@ -55,7 +55,7 @@ epi.array.update = function(A,tj,X){
 
 epi.do.expose = function(P,U,tj,X){
   # get i of newly infected (exposed)
-  ii.sex = P$G$ii.e[U$e.sex.t[[tj]],] # partners who had sex today
+  ii.sex = matrix(P$G$ii.e[U$e.sex.t[[tj]],],ncol=2) # partners who had sex today
   b.IZ = ii.sex[,1] %in% X$i$I # IZ partnership (among above)
   b.ZI = ii.sex[,2] %in% X$i$I # ZI partnership
   u.sex = U$u.sex.t[[tj]][c(which(b.IZ),which(b.ZI))] # random number for each partnership
