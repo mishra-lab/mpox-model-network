@@ -5,7 +5,6 @@ def.params = function(seed=NULL,N=1000,...){
   # independent parameters (mostly)
   P$seed           = seed
   P$N              = N # pop size total
-  P$net.dur        = 6*30 # period of time reflected in the sexual network
   P$net.params     = def.params.net(P$N) # params for network
   P$N.I0           = 10 # number initially infected
   P$dur.exp        = 8.5 # average duration in exposed (latent period) - expon distrib
@@ -30,6 +29,7 @@ def.params.s = function(seeds,...){
 def.params.net = function(N){
   P.net = list()
   P.net$N = N
+  P.net$dur = 6*30 # period of time reflected in the sexual network
   P.net$par.gam.shape = 0.255 # gamma distrib: partners in 6 months
   P.net$par.gam.rate  = 0.032 # gamma distrib: partners in 6 months
   P.net$par.gam.shift = 0.913 # gamma distrib: partners in 6 months
@@ -55,31 +55,29 @@ make.net = function(P.net){
   i.main = sample(i,round(P.net$main.i.frac*P.net$N),p=par.i^P.net$main.w.par.power) # who
   ii.e.main = edges.random(i.main,shuffle=FALSE) # edges = pairs
   sex.e.main = round(rgamma(nrow(ii.e.main),P.net$main.sex.gam.shape,P.net$main.sex.gam.rate) + P.net$main.sex.gam.shift)
-  ii.e.main.sex = edges.repeated(ii.e.main,sex.e.main) # duplicate edges (sex) within each pair
-  # generate casual partnerss
+  # generate casual partners
   par.i.casu = par.i
   par.i.casu[i.main] = par.i.casu[i.main] - 1 # non-main partners
   ii.e.casu = edges.unloop(edges.from.degrees(i,par.i.casu)) # edges = pairs
   sex.e.casu = round(rgamma(nrow(ii.e.casu),P.net$casu.sex.gam.shape,P.net$casu.sex.gam.rate) + P.net$casu.sex.gam.shift)
-  ii.e.casu.sex = edges.repeated(ii.e.casu,sex.e.casu) # duplicate edges (sex) within each pair
   # all contacts
-  ii.e = rbind(ii.e.main.sex,ii.e.casu.sex)
+  ii.e = rbind(ii.e.main,ii.e.casu)
+  sex.e = c(sex.e.main,sex.e.casu)
   # attributes
   g.attr = list()
+  g.attr$dur = P.net$dur
   i.attr = list()
   i.attr$par = par.i
   e.attr = list()
+  e.attr$sex = sex.e
   if (.debug){ # expensive / not required
-    i.attr$sex = degrees.from.edges(i,ii.e)
+    # i.attr$sex = degrees.from.edges(i,ii.e) # TODO: re-implement using sex.e
     i.attr$main = factor(i %in% i.main,c(T,F),c('Yes','No'))
-    e.attr$type = factor(c(rep('main',nrow(ii.e.main.sex)),rep('casu',nrow(ii.e.casu.sex))))
-    kr.e = index.repeated.edges(ii.e)
-    e.attr$sex.index = kr.e[,1]
-    e.attr$sex.total = kr.e[,2]
+    e.attr$type = factor(c(rep('main',nrow(ii.e.main)),rep('casu',nrow(ii.e.casu))))
   }
   # graph object
-  # note: G$deg.i is misused here: should be total sex, but we store total partners
   G = graph.obj(ii.e=ii.e,i=i,deg.i=par.i,g.attr=g.attr,i.attr=i.attr,e.attr=e.attr)
+  # TODO: this results in .Random.seed depends on .debug: maybe move this after .Random.seed saved
   if (.debug){ G$attr$g$layout = graph.layout(G) } # pre-compute consistent layout if needed
   return(G)
 }

@@ -1,17 +1,22 @@
 library('reshape2')
 
+# TODO: rename X$N -> X$i
+
 epi.t = function(t0=1,tf=180){
   t = seq(t0,tf)
 }
 
 epi.random.init = function(P,t){
   .Random.seed <<- P$seed.state
-  dn = list('t'=t,'i'=seqn(P$N))
-  N.U = len(t) * P$N
+  dn.i = list('t'=t,'i'=P$G$i)
+  dn.e = list('t'=t,'e'=P$G$e)
   U = list()
-  U$S.E = dn.array(dn,runif(N.U))
-  U$E.I = dn.array(dn,runif(N.U))
-  U$I.R = dn.array(dn,runif(N.U))
+  f.sex.e = P$G$attr$e$sex / P$G$attr$g$dur # sex frequency per partnership
+  U$e.sex.t = lapply(t,function(tj){ which(runif(P$G$N.e) < f.sex.e) }) # partners had sex per day
+  U$u.sex.t = lapply(U$e.sex.t,runif) # random number per sex day
+  U$u.EI.ti = dn.array(dn.i,runif(len(t)*P$N)) # random number per person day (onset)
+  U$u.IR.ti = dn.array(dn.i,runif(len(t)*P$N)) # random number per person day (recovery)
+  # TODO: replace large u.XX.ti above with version based on days since infection, or something
   return(U)
 }
 
@@ -51,20 +56,25 @@ epi.array.update = function(A,tj,XN){
 }
 
 epi.do.expose = function(P,U,tj,XN){
-  # get i of newly infected
-  r = rle(sort(adjacent.i(P$G,XN$I)))
-  beta = rep(P$beta.health,lengths(XN))[match(r$values,unlist(XN))]
-  Ej = r$values[U$S.E[tj,r$values] < 1-(1-beta/P$net.dur)^r$lengths]
+  # get i of newly infected (exposed)
+  ii.sex = P$G$ii.e[U$e.sex.t[[tj]],] # partners who had sex today
+  b.IZ = ii.sex[,1] %in% XN$I # IZ partnership (among above)
+  b.ZI = ii.sex[,2] %in% XN$I # ZI partnership
+  u.sex = U$u.sex.t[[tj]][c(which(b.IZ),which(b.ZI))] # random number for each partnership
+  i.Z = c(ii.sex[b.IZ,2],ii.sex[b.ZI,1]) # i of partners of I (may also be I)
+  beta = NA * i.Z # initialize beta (among above) - susceptibility
+  for (h in names(XN)){ beta[i.Z %in% XN[[h]]] = P$beta.health[h] } # beta from health status
+  Ej = unique(i.Z[u.sex < beta])
 }
 
 epi.do.onset = function(P,U,tj,XN){
   # get i of newly infectious / symptomatic (assumed same)
-  Ij = XN$E[U$E.I[tj,XN$E] < 1/P$dur.exp]
+  Ij = XN$E[U$u.EI.ti[tj,XN$E] < 1/P$dur.exp]
 }
 
 epi.do.recovery = function(P,U,tj,XN){
   # get i of recovered
-  Rj = XN$I[U$I.R[tj,XN$I] < 1/P$dur.inf]
+  Rj = XN$I[U$u.IR.ti[tj,XN$I] < 1/P$dur.inf]
 }
 
 epi.run = function(P,t){
