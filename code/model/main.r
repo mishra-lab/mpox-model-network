@@ -25,10 +25,10 @@ out.long.s = epi.output.melt.s(R.s)
 g = plot.epidemic(out.long.s,select=list(var='N',health=c('S','E','I','R','V1','V2'))) +
   labs(y='Count',color='State',fill='State') +
   facet_wrap('~health',scales='free_y')
-  fig.save('.tmp/health',w=10,h=6,ext='png')
+  fig.save('.tmp/health',w=10,h=6)
 g = plot.epidemic(out.long.s,select=list(var='inc',health='all')) +
   labs(y='Incidence',color='State',fill='State')
-  fig.save('.tmp/inc',w=8,h=4,ext='png')
+  fig.save('.tmp/inc',w=8,h=4)
 
 q()
 # plot networks

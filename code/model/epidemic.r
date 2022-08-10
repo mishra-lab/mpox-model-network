@@ -29,13 +29,13 @@ epi.init.state = function(P){
   V20 = sample(S0,min(P$N.V0[2],len(S0)))
   S0 = setdiff(S0,V20)
   X = list()
-  X$N = list()
-  X$N$S = S0        # i of susceptible
-  X$N$E = numeric() # i of exposed
-  X$N$I = I0        # i of infected
-  X$N$R = numeric() # i of recovered
-  X$N$V1 = V10      # i of vaccinated 1 dose
-  X$N$V2 = V20      # i of vaccinated 2 dose
+  X$i = list()
+  X$i$S = S0        # i of susceptible
+  X$i$E = numeric() # i of exposed
+  X$i$I = I0        # i of infected
+  X$i$R = numeric() # i of recovered
+  X$i$V1 = V10      # i of vaccinated 1 dose
+  X$i$V2 = V20      # i of vaccinated 2 dose
   return(X)
 }
 
@@ -44,37 +44,37 @@ epi.array.init = function(P,t){
   A = dn.array(list('t'=t,'i'=seqn(P$N)),character())
 }
 
-epi.array.update = function(A,tj,XN){
+epi.array.update = function(A,tj,Xi){
   # update A with current state
-  A[tj,XN$S]  = 'S'
-  A[tj,XN$E]  = 'E'
-  A[tj,XN$I]  = 'I'
-  A[tj,XN$R]  = 'R'
-  A[tj,XN$V1] = 'V1'
-  A[tj,XN$V2] = 'V2'
+  A[tj,Xi$S]  = 'S'
+  A[tj,Xi$E]  = 'E'
+  A[tj,Xi$I]  = 'I'
+  A[tj,Xi$R]  = 'R'
+  A[tj,Xi$V1] = 'V1'
+  A[tj,Xi$V2] = 'V2'
   return(A)
 }
 
-epi.do.expose = function(P,U,tj,XN){
+epi.do.expose = function(P,U,tj,Xi){
   # get i of newly infected (exposed)
   ii.sex = P$G$ii.e[U$e.sex.t[[tj]],] # partners who had sex today
-  b.IZ = ii.sex[,1] %in% XN$I # IZ partnership (among above)
-  b.ZI = ii.sex[,2] %in% XN$I # ZI partnership
+  b.IZ = ii.sex[,1] %in% Xi$I # IZ partnership (among above)
+  b.ZI = ii.sex[,2] %in% Xi$I # ZI partnership
   u.sex = U$u.sex.t[[tj]][c(which(b.IZ),which(b.ZI))] # random number for each partnership
   i.Z = c(ii.sex[b.IZ,2],ii.sex[b.ZI,1]) # i of partners of I (may also be I)
   beta = NA * i.Z # initialize beta (among above) - susceptibility
-  for (h in names(XN)){ beta[i.Z %in% XN[[h]]] = P$beta.health[h] } # beta from health status
+  for (h in names(Xi)){ beta[i.Z %in% Xi[[h]]] = P$beta.health[h] } # beta from health status
   Ej = unique(i.Z[u.sex < beta])
 }
 
-epi.do.onset = function(P,U,tj,XN){
+epi.do.onset = function(P,U,tj,Xi){
   # get i of newly infectious / symptomatic (assumed same)
-  Ij = XN$E[U$u.EI.ti[tj,XN$E] < 1/P$dur.exp]
+  Ij = Xi$E[U$u.EI.ti[tj,Xi$E] < 1/P$dur.exp]
 }
 
-epi.do.recovery = function(P,U,tj,XN){
+epi.do.recovery = function(P,U,tj,Xi){
   # get i of recovered
-  Rj = XN$I[U$u.IR.ti[tj,XN$I] < 1/P$dur.inf]
+  Rj = Xi$I[U$u.IR.ti[tj,Xi$I] < 1/P$dur.inf]
 }
 
 epi.run = function(P,t){
@@ -83,19 +83,19 @@ epi.run = function(P,t){
   X = epi.init.state(P)
   A = epi.array.init(P,t)
   for (tj in t){
-    A = epi.array.update(A,tj,X$N) # log state
+    A = epi.array.update(A,tj,X$i) # log state
     # computing transitions
-    Ej = epi.do.expose(P,U,tj,X$N)
-    Ij = epi.do.onset(P,U,tj,X$N)
-    Rj = epi.do.recovery(P,U,tj,X$N)
+    Ej = epi.do.expose(P,U,tj,X$i)
+    Ij = epi.do.onset(P,U,tj,X$i)
+    Rj = epi.do.recovery(P,U,tj,X$i)
     # applying transitions
-    X$N$R  = c(X$N$R,Rj)                      # append new recovered
-    X$N$I  = setdiff(c(X$N$I,Ij),Rj)          # append new infectious & remove recovered
-    X$N$E  = setdiff(c(X$N$E,Ej),Ij)          # append new exposed & remove infectious
-    X$N$S  = setdiff(X$N$S,Ej)                # remove exposed
-    X$N$V1 = setdiff(X$N$V1,Ej)               # remove exposed
-    X$N$V2 = setdiff(X$N$V2,Ej)               # remove exposed
-    if (.debug && sum(lengths(X$N)) != P$N){ stop('len(X$N) != P$N') }
+    X$i$R  = c(X$i$R,Rj)                      # append new recovered
+    X$i$I  = setdiff(c(X$i$I,Ij),Rj)          # append new infectious & remove recovered
+    X$i$E  = setdiff(c(X$i$E,Ej),Ij)          # append new exposed & remove infectious
+    X$i$S  = setdiff(X$i$S,Ej)                # remove exposed
+    X$i$V1 = setdiff(X$i$V1,Ej)               # remove exposed
+    X$i$V2 = setdiff(X$i$V2,Ej)               # remove exposed
+    if (.debug && sum(lengths(X$i)) != P$N){ stop('len(X$i) != P$N') }
   }
   return(epi.results(P,t,A))
 }
