@@ -7,15 +7,16 @@ def.params = function(seed=NULL,N=1000,...){
   P$N              = N # pop size total
   P$net.params     = def.params.net(P$N) # params for network
   P$N.I0           = 10 # number initially infected
-  P$dur.exp        = 8.5 # average duration in exposed (latent period) - expon distrib
-  P$dur.inf        = 7 # average duration infectious (considering isolation) - expon distrib
-  P$beta           = .90 # probability of transmission (per contact)
+  P$dur.exp.rfun   = r.fun(rlnorm,meanlog=2.09,sdlog=0.46,rmin=3,rmax=21) # incubation period
+  P$dur.inf.rfun   = r.fun(rgamma,shape=36,scale=0.58,rmin=14,rmax=28) # infectious period
+  P$beta           = .20 # probability of transmission (per contact)
   P$vax.eff.dose   = c(.60,.90) # vaccine effectiveness by dose
   P$N.V0           = c(.00,.00) * P$N # total number initially vaccinated by dose
   P = list.update(P,...) # override any of the above
   # conditional parameters
   if (is.null(P$G)){ P$G = make.net(P$net.params) } # generate the sexual network
-  P$beta.health = c('S'=1,'E'=0,'I'=0,'R'=0,'V1'=1-P$vax.eff.dose[1],'V2'=1-P$vax.eff.dose[2])
+  P$beta.health = P$beta * # transmission prob by health state (susceptibility)
+    c('S'=1,'E'=0,'I'=0,'R'=0,'V1'=1-P$vax.eff.dose[1],'V2'=1-P$vax.eff.dose[2])
   P$seed.state = .Random.seed # current state
   return(P)
 }

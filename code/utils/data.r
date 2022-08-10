@@ -67,9 +67,14 @@ split.col = function(x,col,new.names,del=TRUE){
   return(x)
 }
 
-r.fun = function(fun,...,shift=0){
+r.fun = function(fun,...,shift=0,rmin=NULL,rmax=NULL){
   # pre-specify some arguments to random number generating fun
   # e.g. f = partial(runif,min=1,max=2); f(n=10) -> runif(n=10,min=1,max=2)
   args = list(...)
-  rfun = function(...){ kw.call(fun,args,...) + shift }
+  rfun = function(...){
+    r = kw.call(fun,args,...) + shift
+    if (!is.null(rmin)){ r = pmax(r,rmin) }
+    if (!is.null(rmax)){ r = pmin(r,rmax) }
+    return(r)
+  }
 }

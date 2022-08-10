@@ -12,8 +12,8 @@ epi.random.init = function(P,t){
   f.sex.e = P$G$attr$e$sex / P$G$attr$g$dur # sex frequency per partnership
   U$e.sex.t = lapply(t,function(tj){ which(runif(P$G$N.e) < f.sex.e) }) # partners had sex per day
   U$u.sex.t = lapply(U$e.sex.t,runif) # random number per sex day
-  U$dur.exp.i = rexp(P$N,1/P$dur.exp) # random durations to onset per-person
-  U$dur.inf.i = rexp(P$N,1/P$dur.inf) # random durations to recovery per-person
+  U$dur.exp.i = P$dur.exp.rfun(P$N) # random durations to onset per-person
+  U$dur.inf.i = P$dur.inf.rfun(P$N) # random durations to recovery per-person
   return(U)
 }
 
