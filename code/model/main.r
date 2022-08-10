@@ -12,7 +12,7 @@ t = epi.t(tf=180)
 # DEBUG: run one
 # P = def.params(seed=0)
 # R = epi.run(P,t)
-# g = plot.epidemic(epi.output.melt(R$out,P)); fig.save('.tmp/epidemic',w=8,h=4)
+# plot.epidemic(epi.output.melt(R$out,P)); fig.save('.tmp/epidemic',w=8,h=4)
 # plot.network(R$P$G,list(fill='health'),list()); fig.save('.tmp/network',w=8,h=6)
 
 # build + run many

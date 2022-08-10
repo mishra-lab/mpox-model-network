@@ -42,27 +42,27 @@ epi.array.init = function(P,t){
   A = dn.array(list('t'=t,'i'=seqn(P$N)),character())
 }
 
-epi.array.update = function(A,tj,Xi){
+epi.array.update = function(A,tj,X){
   # update A with current state
-  A[tj,Xi$S]  = 'S'
-  A[tj,Xi$E]  = 'E'
-  A[tj,Xi$I]  = 'I'
-  A[tj,Xi$R]  = 'R'
-  A[tj,Xi$V1] = 'V1'
-  A[tj,Xi$V2] = 'V2'
+  A[tj,X$i$S]  = 'S'
+  A[tj,X$i$E]  = 'E'
+  A[tj,X$i$I]  = 'I'
+  A[tj,X$i$R]  = 'R'
+  A[tj,X$i$V1] = 'V1'
+  A[tj,X$i$V2] = 'V2'
   return(A)
 }
 
-epi.do.expose = function(P,U,tj,Xi){
+epi.do.expose = function(P,U,tj,X){
   # get i of newly infected (exposed)
   ii.sex = P$G$ii.e[U$e.sex.t[[tj]],] # partners who had sex today
-  b.IZ = ii.sex[,1] %in% Xi$I # IZ partnership (among above)
-  b.ZI = ii.sex[,2] %in% Xi$I # ZI partnership
+  b.IZ = ii.sex[,1] %in% X$i$I # IZ partnership (among above)
+  b.ZI = ii.sex[,2] %in% X$i$I # ZI partnership
   u.sex = U$u.sex.t[[tj]][c(which(b.IZ),which(b.ZI))] # random number for each partnership
   i.Z = c(ii.sex[b.IZ,2],ii.sex[b.ZI,1]) # i of partners of I (may also be I)
   beta = NA * i.Z # initialize beta (among above) - susceptibility
-  for (h in names(Xi)){ beta[i.Z %in% Xi[[h]]] = P$beta.health[h] } # beta from health status
-  Ej = unique(i.Z[u.sex < beta])
+  for (h in names(X$i)){ beta[i.Z %in% X$i[[h]]] = P$beta.health[h] } # beta from health status
+  Ej = unique(i.Z[u.sex < beta]) # infected (exposed)
 }
 
 epi.do.onset = function(P,U,tj,X){
@@ -81,9 +81,9 @@ epi.run = function(P,t){
   X = epi.init.state(P)
   A = epi.array.init(P,t)
   for (tj in t){
-    A = epi.array.update(A,tj,X$i) # log state
+    A = epi.array.update(A,tj,X) # log state
     # computing transitions
-    Ej = epi.do.expose(P,U,tj,X$i)
+    Ej = epi.do.expose(P,U,tj,X)
     Ij = epi.do.onset(P,U,tj,X)
     Rj = epi.do.recovery(P,U,tj,X)
     # applying transitions
