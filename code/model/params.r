@@ -10,7 +10,7 @@ def.params = function(seed=NULL,N=1000,...){
   P$dur.exp.rfun   = r.fun(rlnorm,meanlog=2.09,sdlog=0.46,rmin=3,rmax=21) # incubation period
   P$dur.inf.rfun   = r.fun(rgamma,shape=36,scale=0.58,rmin=14,rmax=28) # infectious period
   P$beta           = .20 # probability of transmission (per contact)
-  P$vax.eff.dose   = c(.60,.90) # vaccine effectiveness by dose
+  P$vax.eff.dose   = c(.85,.88) # vaccine effectiveness by dose
   P$N.V0           = c(.00,.00) * P$N # total number initially vaccinated by dose
   P = list.update(P,...) # override any of the above
   # conditional parameters
