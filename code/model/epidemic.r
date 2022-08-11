@@ -42,22 +42,13 @@ epi.init.state = function(P){
   return(X)
 }
 
-epi.array.init = function(P,t){
-  # large, complete representation: t (rows) x individuals (cols)
-  A = dn.array(list('t'=t,'i'=seqn(P$N)),character())
-}
-
-epi.array.update = function(A,tj,X){
-  # update A with current state
-  # TODO: apparently this is bottleneck
-  A[tj,X$i$S]  = 'S'
-  A[tj,X$i$E]  = 'E'
-  A[tj,X$i$I]  = 'I'
-  A[tj,X$i$H]  = 'H'
-  A[tj,X$i$R]  = 'R'
-  A[tj,X$i$V1] = 'V1'
-  A[tj,X$i$V2] = 'V2'
-  return(A)
+epi.out.init = function(P,t,X){
+  out.t = list()
+  out.t$N = list()
+  out.t$inc = list()
+  out.t$tree = list()
+  out.t$Xi = list('t0'=X$i)
+  return(out.t)
 }
 
 epi.ii.transmit = function(P,U,tj,X){
@@ -67,8 +58,7 @@ epi.ii.transmit = function(P,U,tj,X){
   b.ZI = ii.sex[,2] %in% X$i$I # ZI partnership
   u.sex = U$u.sex.t[[tj]][c(which(b.IZ),which(b.ZI))] # random number for each partnership
   ii.IZ = rbind(ii.sex[b.IZ,c(1,2)],ii.sex[b.ZI,c(2,1)]) # I-(Z = anything) partnerships
-  beta = NA * ii.IZ[,2] # initialize beta (among above) - susceptibility
-  for (h in names(X$i)){ beta[ii.IZ[,2] %in% X$i[[h]]] = P$beta.health[h] } # beta from health status
+  beta = lookup.map(ii.IZ[,2], X$i, P$beta.health) # beta from health status (among above)
   b.transmit = u.sex < beta
   ii.IE.j = ii.IZ[b.transmit,,drop=FALSE] # infected, exposed
   ii.IE.j = ii.IE.j[!duplicated(ii.IE.j[,2]),,drop=FALSE] # remove double infections
@@ -78,9 +68,8 @@ epi.run = function(P,t){
   # run the epidemic
   U = epi.random.init(P,t)
   X = epi.init.state(P)
-  A = epi.array.init(P,t)
+  out.t = epi.out.init(P,t,X)
   for (tj in t){
-    A = epi.array.update(A,tj,X) # log state
     # computing transitions
     ii.IE.j = epi.ii.transmit(P,U,tj,X)
     b.EI.j = X$dur$exp > U$dur.exp.i[X$i$E]           # E -> I
@@ -92,6 +81,13 @@ epi.run = function(P,t){
     iHj = X$i$I[b.IH.j]
     iIj = X$i$E[b.EI.j]
     iEj = ii.IE.j[,2]
+    iEj.S  = intersect(iEj, X$i$S)
+    iEj.V1 = intersect(iEj, X$i$V1)
+    iEj.V2 = intersect(iEj, X$i$V2)
+    # log state stuff
+    out.t$N[[tj]] = lens(X$i)
+    out.t$inc[[tj]] = c('S'=len(iEj.S),'V1'=len(iEj.V1),'V2'=len(iEj.V2))
+    out.t$tree[[tj]] = ii.IE.j
     # update durations
     X$dur$iso = 1 + c(X$dur$iso[!b.HR.j], X$dur$inf[b.IH.j]) # iso dur continues from inf
     X$dur$inf = 1 + c(X$dur$inf[!b.IZ.j], numeric(len(iIj))) # new inf from zero
@@ -101,18 +97,14 @@ epi.run = function(P,t){
     X$i$H  = c(X$i$H[!b.HR.j], iHj)
     X$i$I  = c(X$i$I[!b.IZ.j], iIj)
     X$i$E  = c(X$i$E[!b.EI.j], iEj)
-    X$i$V2 = setdiff(X$i$V2, iEj)
-    X$i$V1 = setdiff(X$i$V1, iEj)
-    X$i$S  = setdiff(X$i$S, iEj)
-    if (.debug && sum(lens(X$i)) != P$N){
-      source('.debug/debug-X-lens.r'); Xi12(X$i)
-      print(sum(lens(X$i)))
-      print(P$N)
-      print(X$i)
-      stop('len(X$i) != P$N') }
+    X$i$V2 = setdiff(X$i$V2, iEj.V2)
+    X$i$V1 = setdiff(X$i$V1, iEj.V1)
+    X$i$S  = setdiff(X$i$S,  iEj.S)
+    if (.debug && sum(lens(X$i)) != P$N){ stop('len(X$i) != P$N') }
     if (.debug && lens(X$dur) != lens(X$i[2:4])){ stop('lens(X$dur) != lens(X$i)') }
   }
-  return(epi.results(P,t,A))
+  out.t$Xi[['tf']] = X$i
+  return(epi.results(P,t,out.t))
 }
 
 epi.run.s = function(P.s,t,parallel=TRUE){
@@ -121,50 +113,36 @@ epi.run.s = function(P.s,t,parallel=TRUE){
   R.s = lapply.fun(P.s,function(P){ R = epi.run(P,t) })
 }
 
-epi.results = function(P,t,A){
-  # collect some results (usually don't include A, which is large)
+epi.results = function(P,t,out.t){
+  # collect some results
   R = list()
-  P$G = epi.net.attrs(P$G,A,t)
+  P$G = epi.net.attrs(P$G,t,out.t)
   R$P = P
-  R$t = t
-  R$out = epi.output(P,t,A)
-  if (.debug){ R$A = A }
+  R$out = epi.output(P,t,out.t)
   return(R)
 }
 
-epi.net.attrs = function(G,A,t){
+epi.net.attrs = function(G,t,out.t){
   # add some attributes to G after running the model
-  G$attr$i$inf.src = factor(A[1,]=='I',levels=c(F,T),labels=M$inf.src$name)
-  G$attr$i$health  = A[length(t),]
+  G$attr$i$inf.src = factor(G$i %in% out.t$Xi$t0$I,levels=c(F,T),labels=M$inf.src$name)
+  G$attr$i$health  = lookup.map(G$i, out.t$Xi$tf)
   return(G)
 }
 
-epi.output = function(P,t,A){
-  # computs some pre-determined outputs from A, usually stratified by health
-  # yields a more efficient representation of A, but loses information
-  # TODO: maybe save A (compressed somehow?) to avoid information loss + compute outputs on the fly
-  out = data.frame('t'=t)
-  # function compute outputs overall (as list)
-  sum.fun = function(num,den=1,...){
-    out[[join.str(...)]] = rowSums(num) / { if (is.matrix(den)) rowSums(den) else den }
-    return(out)
-  }
-  # absolute (N), prevalence (prev)
-  A1 = matrix(1,nrow=nrow(A),ncol=ncol(A))
-  out = sum.fun(A!='',1,'N','all')
-  for (h in M$health$name){
-    out = sum.fun(A==h,1,'N',h)
-    out = sum.fun(A==h,A1,'prev',h)
-  }
-  # absolute incidence (inc)
-  h.sus = c('S','V1','V2')
-  A.1 = A[(2:len(t))-1,]
-  A.E = A[(2:len(t)),] == 'E'
-  out = sum.fun(rbind(A.1 %in% h.sus & A.E,NA),1,'inc','all')
-  for (h in h.sus){
-    out = sum.fun(rbind(A.1==h & A.E,NA),1,'inc',h)
-  }
-  return(out)
+epi.output = function(P,t,out.t){
+  tree = do.call(rbind,lapply(t,function(tj){
+    cbind('t'=rep(tj,nrow(out.t$tree[[tj]])),out.t$tree[[tj]])
+  }))
+  N       = as.data.frame(do.call(rbind,out.t$N))
+  N$all   = P$N
+  inc     = as.data.frame(do.call(rbind,out.t$inc))
+  inc$all = rowSums(inc)
+  prev    = N / P$N
+  out  = cbind(
+    't' = t,
+    setNames(N,   paste0('N.',   names(N))),
+    setNames(prev,paste0('prev.',names(prev))),
+    setNames(inc, paste0('inc.', names(inc))))
 }
 
 epi.output.melt = function(out,P){
