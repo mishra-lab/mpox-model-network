@@ -60,16 +60,18 @@ epi.array.update = function(A,tj,X){
   return(A)
 }
 
-epi.i.exposed = function(P,U,tj,X){
+epi.ii.transmit = function(P,U,tj,X){
   # get i of newly infected (exposed)
-  ii.sex = matrix(P$G$ii.e[U$e.sex.t[[tj]],],ncol=2) # partners who had sex today
+  ii.sex = P$G$ii.e[U$e.sex.t[[tj]],,drop=FALSE] # partners who had sex today
   b.IZ = ii.sex[,1] %in% X$i$I # IZ partnership (among above)
   b.ZI = ii.sex[,2] %in% X$i$I # ZI partnership
   u.sex = U$u.sex.t[[tj]][c(which(b.IZ),which(b.ZI))] # random number for each partnership
-  iZ = c(ii.sex[b.IZ,2],ii.sex[b.ZI,1]) # i of partners of I (may also be I)
-  beta = NA * iZ # initialize beta (among above) - susceptibility
-  for (h in names(X$i)){ beta[iZ %in% X$i[[h]]] = P$beta.health[h] } # beta from health status
-  iEj = unique(iZ[u.sex < beta]) # infected (exposed)
+  ii.IZ = rbind(ii.sex[b.IZ,c(1,2)],ii.sex[b.ZI,c(2,1)]) # I-(Z = anything) partnerships
+  beta = NA * ii.IZ[,2] # initialize beta (among above) - susceptibility
+  for (h in names(X$i)){ beta[ii.IZ[,2] %in% X$i[[h]]] = P$beta.health[h] } # beta from health status
+  b.transmit = u.sex < beta
+  ii.IE.j = ii.IZ[b.transmit,,drop=FALSE] # infected, exposed
+  ii.IE.j = ii.IE.j[!duplicated(ii.IE.j[,2]),,drop=FALSE] # remove double infections
 }
 
 epi.run = function(P,t){
@@ -80,7 +82,7 @@ epi.run = function(P,t){
   for (tj in t){
     A = epi.array.update(A,tj,X) # log state
     # computing transitions
-    iEj = epi.i.exposed(P,U,tj,X)
+    ii.IE.j = epi.ii.transmit(P,U,tj,X)
     b.EI.j = X$dur$exp > U$dur.exp.i[X$i$E]           # E -> I
     b.IR.j = X$dur$inf > U$dur.inf.i[X$i$I]           # I -> R
     b.IH.j = X$dur$inf > U$dur.iso.i[X$i$I] & !b.IR.j # I -> H
@@ -89,6 +91,7 @@ epi.run = function(P,t){
     iRj = c(X$i$I[b.IR.j],X$i$H[b.HR.j])
     iHj = X$i$I[b.IH.j]
     iIj = X$i$E[b.EI.j]
+    iEj = ii.IE.j[,2]
     # update durations
     X$dur$iso = 1 + c(X$dur$iso[!b.HR.j], X$dur$inf[b.IH.j]) # iso dur continues from inf
     X$dur$inf = 1 + c(X$dur$inf[!b.IZ.j], numeric(len(iIj))) # new inf from zero
