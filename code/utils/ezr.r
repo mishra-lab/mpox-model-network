@@ -1,7 +1,7 @@
 # some tools to make life easier
 
 len = length
-
+lens = lengths
 seqn = seq_len
 
 sum1 = function(x){

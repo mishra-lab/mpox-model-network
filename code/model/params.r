@@ -17,7 +17,7 @@ def.params = function(seed=NULL,N=1000,...){
   # conditional parameters
   if (is.null(P$G)){ P$G = make.net(P$net.params) } # generate the sexual network
   P$beta.health = P$beta * # transmission prob by health state (susceptibility)
-    c('S'=1,'E'=0,'I'=0,'R'=0,'V1'=1-P$vax.eff.dose[1],'V2'=1-P$vax.eff.dose[2])
+    c('S'=1,'E'=0,'I'=0,'H'=0,'R'=0,'V1'=1-P$vax.eff.dose[1],'V2'=1-P$vax.eff.dose[2])
   P$seed.state = .Random.seed # current state
   return(P)
 }

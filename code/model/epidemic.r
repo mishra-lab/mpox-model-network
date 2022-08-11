@@ -1,6 +1,6 @@
 library('reshape2')
 
-# TODO: rename X$N -> X$i
+# TODO: rename Z -> x
 
 epi.t = function(t0=1,tf=180){
   t = seq(t0,tf)
@@ -31,10 +31,14 @@ epi.init.state = function(P){
   X$i$S = S0        # i of susceptible
   X$i$E = numeric() # i of exposed
   X$i$I = I0        # i of infected
+  X$i$H = numeric() # i of isolating
   X$i$R = numeric() # i of recovered
   X$i$V1 = V10      # i of vaccinated 1 dose
   X$i$V2 = V20      # i of vaccinated 2 dose
-  X$dur = numeric(P$N) # duration in current state
+  X$dur = list()
+  X$dur$exp = numeric()       # duration exposed -> infectious
+  X$dur$inf = numeric(P$N.I0) # duration infectious -> {isolating or recovered}
+  X$dur$iso = numeric()       # duration infectious -> recovered (among isolating)
   return(X)
 }
 
@@ -45,35 +49,27 @@ epi.array.init = function(P,t){
 
 epi.array.update = function(A,tj,X){
   # update A with current state
+  # TODO: apparently this is bottleneck
   A[tj,X$i$S]  = 'S'
   A[tj,X$i$E]  = 'E'
   A[tj,X$i$I]  = 'I'
+  A[tj,X$i$H]  = 'H'
   A[tj,X$i$R]  = 'R'
   A[tj,X$i$V1] = 'V1'
   A[tj,X$i$V2] = 'V2'
   return(A)
 }
 
-epi.do.expose = function(P,U,tj,X){
+epi.i.exposed = function(P,U,tj,X){
   # get i of newly infected (exposed)
   ii.sex = matrix(P$G$ii.e[U$e.sex.t[[tj]],],ncol=2) # partners who had sex today
   b.IZ = ii.sex[,1] %in% X$i$I # IZ partnership (among above)
   b.ZI = ii.sex[,2] %in% X$i$I # ZI partnership
   u.sex = U$u.sex.t[[tj]][c(which(b.IZ),which(b.ZI))] # random number for each partnership
-  i.Z = c(ii.sex[b.IZ,2],ii.sex[b.ZI,1]) # i of partners of I (may also be I)
-  beta = NA * i.Z # initialize beta (among above) - susceptibility
-  for (h in names(X$i)){ beta[i.Z %in% X$i[[h]]] = P$beta.health[h] } # beta from health status
-  Ej = unique(i.Z[u.sex < beta]) # infected (exposed)
-}
-
-epi.do.onset = function(P,U,tj,X){
-  # get i of newly infectious / symptomatic (assumed same)
-  Ij = X$i$E[X$dur[X$i$E] > U$dur.exp.i[X$i$E]]
-}
-
-epi.do.recovery = function(P,U,tj,X){
-  # get i of recovered (or isolating)
-  Rj = X$i$I[X$dur[X$i$I] > U$dur.inf.i[X$i$I] | X$dur[X$i$I] > U$dur.iso.i[X$i$I]]
+  iZ = c(ii.sex[b.IZ,2],ii.sex[b.ZI,1]) # i of partners of I (may also be I)
+  beta = NA * iZ # initialize beta (among above) - susceptibility
+  for (h in names(X$i)){ beta[iZ %in% X$i[[h]]] = P$beta.health[h] } # beta from health status
+  iEj = unique(iZ[u.sex < beta]) # infected (exposed)
 }
 
 epi.run = function(P,t){
@@ -84,20 +80,34 @@ epi.run = function(P,t){
   for (tj in t){
     A = epi.array.update(A,tj,X) # log state
     # computing transitions
-    Ej = epi.do.expose(P,U,tj,X)
-    Ij = epi.do.onset(P,U,tj,X)
-    Rj = epi.do.recovery(P,U,tj,X)
-    # applying transitions
-    X$i$R  = c(X$i$R,Rj)                      # append new recovered
-    X$i$I  = setdiff(c(X$i$I,Ij),Rj)          # append new infectious & remove recovered
-    X$i$E  = setdiff(c(X$i$E,Ej),Ij)          # append new exposed & remove infectious
-    X$i$S  = setdiff(X$i$S,Ej)                # remove exposed
-    X$i$V1 = setdiff(X$i$V1,Ej)               # remove exposed
-    X$i$V2 = setdiff(X$i$V2,Ej)               # remove exposed
+    iEj = epi.i.exposed(P,U,tj,X)
+    b.EI.j = X$dur$exp > U$dur.exp.i[X$i$E]           # E -> I
+    b.IR.j = X$dur$inf > U$dur.inf.i[X$i$I]           # I -> R
+    b.IH.j = X$dur$inf > U$dur.iso.i[X$i$I] & !b.IR.j # I -> H
+    b.HR.j = X$dur$iso > U$dur.inf.i[X$i$H]           # H -> R
+    b.IZ.j = b.IR.j | b.IH.j
+    iRj = c(X$i$I[b.IR.j],X$i$H[b.HR.j])
+    iHj = X$i$I[b.IH.j]
+    iIj = X$i$E[b.EI.j]
     # update durations
-    X$dur[c(Ej,Ij,Rj)] = 0
-    X$dur = X$dur + 1
-    if (.debug && sum(lengths(X$i)) != P$N){ stop('len(X$i) != P$N') }
+    X$dur$iso = 1 + c(X$dur$iso[!b.HR.j], X$dur$inf[b.IH.j]) # iso dur continues from inf
+    X$dur$inf = 1 + c(X$dur$inf[!b.IZ.j], numeric(len(iIj))) # new inf from zero
+    X$dur$exp = 1 + c(X$dur$exp[!b.EI.j], numeric(len(iEj))) # new exp from zero
+    # update indices
+    X$i$R  = c(X$i$R,iRj)
+    X$i$H  = c(X$i$H[!b.HR.j], iHj)
+    X$i$I  = c(X$i$I[!b.IZ.j], iIj)
+    X$i$E  = c(X$i$E[!b.EI.j], iEj)
+    X$i$V2 = setdiff(X$i$V2, iEj)
+    X$i$V1 = setdiff(X$i$V1, iEj)
+    X$i$S  = setdiff(X$i$S, iEj)
+    if (.debug && sum(lens(X$i)) != P$N){
+      source('.debug/debug-X-lens.r'); Xi12(X$i)
+      print(sum(lens(X$i)))
+      print(P$N)
+      print(X$i)
+      stop('len(X$i) != P$N') }
+    if (.debug && lens(X$dur) != lens(X$i[2:4])){ stop('lens(X$dur) != lens(X$i)') }
   }
   return(epi.results(P,t,A))
 }
