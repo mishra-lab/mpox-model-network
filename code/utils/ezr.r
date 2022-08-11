@@ -37,3 +37,7 @@ dn.array = function(dn,x=NA){
   # easily construct array from dimnames
   A = array(x,dim=sapply(dn,len),dimnames=dn)
 }
+
+self.name = function(x){
+  x = setNames(x,x)
+}

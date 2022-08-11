@@ -78,3 +78,14 @@ r.fun = function(fun,...,shift=0,rmin=NULL,rmax=NULL){
     return(r)
   }
 }
+
+lookup.map = function(i,x,m=NULL){
+  # e.g. lookup.map(1:5,list(a=1:2,b=3:5)) -> c('a','a','b','b','b')
+  # e.g. lookup.map(1:5,list(a=1:2,b=3:5),list(a='A',b='B')) -> c('A','A','B','B','B')
+  y = NA * i
+  if (is.null(m)){ m = self.name(names(x)) }
+  for (name in names(x)){
+    y[i %in% x[[name]]] = m[name]
+  }
+  return(y)
+}
