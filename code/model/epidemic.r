@@ -130,9 +130,11 @@ epi.net.attrs = function(G,t,out.t){
 }
 
 epi.output = function(P,t,out.t){
+  # clean-up outputs + compute a few extra
   tree = do.call(rbind,lapply(t,function(tj){
     cbind('t'=rep(tj,nrow(out.t$tree[[tj]])),out.t$tree[[tj]])
   }))
+  tree = rbind(cbind('t'=rep(0,P$N.I0),'I'=rep(0,P$N.I0),'E'=out.t$Xi$t0$I),tree)
   N       = as.data.frame(do.call(rbind,out.t$N))
   N$all   = P$N
   inc     = as.data.frame(do.call(rbind,out.t$inc))
