@@ -119,6 +119,7 @@ epi.results = function(P,t,out.t){
   P$G = epi.net.attrs(P$G,t,out.t)
   R$P = P
   R$out = epi.output(P,t,out.t)
+  R$tree = epi.tree(P,t,out.t)
   return(R)
 }
 
@@ -129,12 +130,29 @@ epi.net.attrs = function(G,t,out.t){
   return(G)
 }
 
+epi.tree = function(P,t,out.t){
+  # clean up tree & compute a few properties
+  tree = do.call(rbind,lapply(t,function(tj){
+    tree.j = out.t$tree[[tj]]
+    cbind('par'=tree.j[,1],'chi'=tree.j[,2],'t'=rep(tj,nrow(tree.j)))
+  }))
+  tree = rbind(cbind('par'=rep(0,P$N.I0),'chi'=out.t$Xi$t0$I,'t'=rep(0,P$N.I0)),tree)
+  if (.debug){
+    tree.data = recurse.tree(tree[,c('par','chi')],root=0)
+    tree = as.data.frame(tree)
+    tree = rbind(c(-1,0,NA),tree)
+    tree = tree[match(tree.data[1,],tree$chi),]
+    tree$gen = tree.data[2,]
+    tree$pos = (tree.data[3,]-1) / (max(tree.data[3,])-1)
+    tree$n.chi.dir = tree.data[4,]
+    tree$n.chi.tot = tree.data[5,]
+    tree$dt = tree$t - tree$t[match(tree$par,tree$chi)]
+  }
+  return(tree)
+}
+
 epi.output = function(P,t,out.t){
   # clean-up outputs + compute a few extra
-  tree = do.call(rbind,lapply(t,function(tj){
-    cbind('t'=rep(tj,nrow(out.t$tree[[tj]])),out.t$tree[[tj]])
-  }))
-  tree = rbind(cbind('t'=rep(0,P$N.I0),'I'=rep(0,P$N.I0),'E'=out.t$Xi$t0$I),tree)
   N       = as.data.frame(do.call(rbind,out.t$N))
   N$all   = P$N
   inc     = as.data.frame(do.call(rbind,out.t$inc))

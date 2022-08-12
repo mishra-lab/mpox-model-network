@@ -2,6 +2,7 @@
 
 suppressPackageStartupMessages({
   library('ggplot2')
+  library('ggExtra')
   library('viridis')
 })
 

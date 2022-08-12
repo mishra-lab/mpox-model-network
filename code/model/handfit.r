@@ -49,7 +49,26 @@ handfit.plot.distribs = function(R){
     fig.save(fname('i-sex-health'),w=8,h=4)
 }
 
+handfit.plot.tree = function(R){
+  # common stuff
+  add.cmaps = function(g,label,...){ g = g +
+    scale_color_viridis(...,discrete=TRUE) +
+    scale_fill_viridis(...,discrete=TRUE) +
+    labs(color=label,fill=label) }
+  # transmission by generation
+  R$tree$gen.f = factor(R$tree$gen)
+  g = plot.tree(R$tree,fill='gen.f')
+    g = plot.add.tree.margin(add.cmaps(g,'Generation',option='inferno',begin=.2,end=.9))
+    fig.save(fname('tree-gen'),g=g,w=8,h=6)
+  # transmission by n children
+  R$tree$n.chi.cut = int.cut(R$tree$n.chi.dir,c(0,1,2,6))
+  g = plot.tree(R$tree,fill='n.chi.cut')
+    g = plot.add.tree.margin(add.cmaps(g,'Transmission',option='viridis'))
+    fig.save(fname('tree-n-child'),g=g,w=8,h=6)
+}
+
 handfit.network.gif = function(seed=0,N=100,tf=100,fps=10){
+  # TODO: with A gone, need to refactor this
   # make a gif from plot.network, showing health states over time
   library('gganimate')
     # define params & run model
@@ -73,7 +92,8 @@ handfit.network.gif = function(seed=0,N=100,tf=100,fps=10){
 R = handfit.run()
 handfit.plot.epidemic(R)
 handfit.plot.distribs(R)
-par.lapply(c(100,300),handfit.network.gif,seed=0,tf=100)
+handfit.plot.tree(R)
+# par.lapply(c(100,300),handfit.network.gif,seed=0,tf=100)
 
 
 

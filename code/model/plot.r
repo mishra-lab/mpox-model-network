@@ -17,6 +17,31 @@ plot.network = function(G,i.aes=list(),e.aes=list()){
   g = add.meta.scales(g,e.aes)
 }
 
+plot.tree = function(tree,...,t.root=NA){
+  # plot a transmission tree vs time
+  tree$t[1] = t.root # use negative value to connect I0 in the past
+  pc.map = match(tree$par,tree$chi)
+  tree$pos.par = tree$pos[pc.map]
+  tree$t.par = tree$t[pc.map]
+  args = list(...)
+  map = list.update(list(fill='black',color='white',shape=21),args)
+  b.aes = map %in% names(tree)
+  g = ggplot(tree) +
+    geom_segment(aes_string(y='t.par',x='pos.par',xend='pos',yend='t'),alpha=.5) +
+    geom_point(aes_string(color=map[b.aes]$fill,x='pos',y='t'),size=0) +
+    kw.call(geom_point,map=kw.call(aes_string,map[b.aes],x='pos',y='t'),map[!b.aes]) +
+    scale_x_continuous(labels=NULL,breaks=NULL) +
+    labs(y='Time (days)',x='') +
+    theme_light()
+}
+
+plot.add.tree.margin = function(g,fill=TRUE){
+  # add marginal to tree, but must do this last as ggMarginal creates a gtable
+  g = g + theme(legend.position='top')
+  g = ggMarginal(g,type='hist',margins='y',lwd=.25,color='white',alpha=.8,groupFill=!is.null(fill),
+    yparams=list(binwidth=1))
+}
+
 plot.distribution = function(P.s,gie,attr,vals,select=list(),...){
   # plot distribution(s) of attributes in P$G (or P.s)
   # note: no geom by default for flexibility; we just collect the histogram data
