@@ -17,7 +17,7 @@ source('utils/all.r')
 
 graph.obj = function(ii.e,i=NULL,deg.i=NULL,g.attr=NULL,i.attr=NULL,e.attr=NULL){
   if (is.null(i)){ i = sort(unique(c(ii.e))) }
-  if (is.null(deg.i)){ deg.i = degree.from.edges(i,ii.e) }
+  if (is.null(deg.i)){ deg.i = degrees.from.edges(i,ii.e) }
   G = list()
   G$N.i = len(i)
   G$N.e = nrow(ii.e)
