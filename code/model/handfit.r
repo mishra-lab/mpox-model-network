@@ -68,7 +68,6 @@ handfit.plot.tree = function(R){
 }
 
 handfit.network.gif = function(seed=0,N=100,tf=100,fps=10){
-  # TODO: with A gone, need to refactor this
   # make a gif from plot.network, showing health states over time
   library('gganimate')
     # define params & run model
@@ -93,9 +92,4 @@ R = handfit.run()
 handfit.plot.epidemic(R)
 handfit.plot.distribs(R)
 handfit.plot.tree(R)
-# par.lapply(c(100,300),handfit.network.gif,seed=0,tf=100)
-
-
-
-
-
+par.lapply(c(100,300),handfit.network.gif,seed=0,tf=100)

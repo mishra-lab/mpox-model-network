@@ -100,8 +100,12 @@ epi.run = function(P,t){
     X$i$V2 = setdiff(X$i$V2, iEj.V2)
     X$i$V1 = setdiff(X$i$V1, iEj.V1)
     X$i$S  = setdiff(X$i$S,  iEj.S)
-    if (.debug && sum(lens(X$i)) != P$N){ stop('len(X$i) != P$N') }
-    if (.debug && lens(X$dur) != lens(X$i[2:4])){ stop('lens(X$dur) != lens(X$i)') }
+    # debug stuff
+    if (.debug){
+      out.t$Xi[[tj]] = X$i
+      if (sum(lens(X$i)) != P$N){ stop('len(X$i) != P$N') }
+      if (any(lens(X$dur) != lens(X$i[2:4]))){ stop('lens(X$dur) != lens(X$i)') }
+    }
   }
   out.t$Xi[['tf']] = X$i
   return(epi.results(P,t,out.t))
@@ -120,6 +124,10 @@ epi.results = function(P,t,out.t){
   R$P = P
   R$out = epi.output(P,t,out.t)
   R$tree = epi.tree(P,t,out.t)
+  if (.debug){
+    R$A = dn.array(list('t'=t,'i'=seqn(P$N)),character())
+    for (tj in t){ Xij = out.t$Xi[[tj]]; for (h in names(Xij)){ R$A[tj,Xij[[h]]] = h } }
+  }
   return(R)
 }
 
