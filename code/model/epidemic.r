@@ -23,7 +23,7 @@ epi.random.init = function(P,t.vec){
   return(R)
 }
 
-epi.init.state = function(P){
+epi.state.init = function(P){
   # state = lists of indices & selected durations
   # e.g. if population looks like c('R','S','I','S'), X$i = list(S=c(2,4),I=c(3),R=c(1))
   # values in X$dur are matched (same order) as corresponding indices in X$i
@@ -78,7 +78,7 @@ epi.ii.transmit = function(P,R,tj,X){
 epi.run = function(P,t.vec){
   # run the epidemic
   R = epi.random.init(P,t.vec) # pre-compute all (most) random values
-  X = epi.init.state(P) # indices of all health states, and durations of some of those
+  X = epi.state.init(P) # indices of all health states, and durations of some of those
   out.t = epi.out.init(P,X) # initialize the output stuff
   for (tj in t.vec){
     # computing transitions
