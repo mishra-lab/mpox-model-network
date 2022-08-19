@@ -1,12 +1,10 @@
 library('reshape2')
 
-# TODO: rename t -> t.vec (transpose conflict)
-
 epi.t = function(t0=1,tf=180){
-  t = seq(t0,tf)
+  t.vec = seq(t0,tf)
 }
 
-epi.random.init = function(P,t){
+epi.random.init = function(P,t.vec){
   # R is a list of pre-computed random numbers
   # which allow the exact same events to occur among every individual,
   # unless they are affected by vaccination or other intervention.
@@ -17,7 +15,7 @@ epi.random.init = function(P,t){
   .Random.seed <<- P$seed.state # resume state we left off after def.params
   R = list()
   f.sex.e = P$G$attr$e$sex / P$G$attr$g$dur # sex frequency per partnership (per day)
-  R$e.sex.t = lapply(t,function(tj){ which(runif(P$G$N.e) < f.sex.e) }) # partnerships having sex each day
+  R$e.sex.t = lapply(t.vec,function(tj){ which(runif(P$G$N.e) < f.sex.e) }) # partnerships having sex each day
   R$r.sex.t = lapply(R$e.sex.t,runif) # random number per sex-day (used to decide transmission)
   R$dur.EI.i = P$dur.EI.rfun(P$N) # random dur per-person: from exposure to symptom onset (incubation)
   R$dur.IR.i = P$dur.IR.rfun(P$N) # random dur per-person: from onset to recovery (infectious)
@@ -53,7 +51,7 @@ epi.init.state = function(P){
   return(X)
 }
 
-epi.out.init = function(P,t,X){
+epi.out.init = function(P,X){
   # out.t = list of lists; sub-lists indexed by time to allow efficient adding
   # then we can do.call(rbind,out.t${whatever}) to make a data.frame
   out.t = list()
@@ -77,12 +75,12 @@ epi.ii.transmit = function(P,R,tj,X){
   ii.IE.j = ii.IE.j[!duplicated(ii.IE.j[,2]),,drop=FALSE] # remove double infections
 }
 
-epi.run = function(P,t){
+epi.run = function(P,t.vec){
   # run the epidemic
-  R = epi.random.init(P,t) # pre-compute all (most) random values
+  R = epi.random.init(P,t.vec) # pre-compute all (most) random values
   X = epi.init.state(P) # indices of all health states, and durations of some of those
-  out.t = epi.out.init(P,t,X) # initialize the output stuff
-  for (tj in t){
+  out.t = epi.out.init(P,X) # initialize the output stuff
+  for (tj in t.vec){
     # computing transitions
     ii.IE.j = epi.ii.transmit(P,R,tj,X)             # I{S,V1,V2} -> IE
     b.EI.j = X$dur$E  > R$dur.EI.i[X$i$E]           # E -> I (end incubation)
@@ -121,30 +119,30 @@ epi.run = function(P,t){
     }
   }
   out.t$Xi[['tf']] = X$i
-  return(epi.results(P,t,out.t))
+  return(epi.results(P,t.vec,out.t))
 }
 
-epi.run.s = function(P.s,t,parallel=TRUE){
+epi.run.s = function(P.s,t.vec,parallel=TRUE){
   # run for multiple seeds, usually in parallel
   if (parallel){ lapply.fun = par.lapply } else { lapply.fun = lapply }
-  E.s = lapply.fun(P.s,function(P){ E = epi.run(P,t) })
+  E.s = lapply.fun(P.s,function(P){ E = epi.run(P,t.vec) })
 }
 
-epi.results = function(P,t,out.t){
+epi.results = function(P,t.vec,out.t){
   # collect some results (renamed "R" -> "E")
   E = list()
-  P$G = epi.net.attrs(P$G,t,out.t)
+  P$G = epi.net.attrs(P$G,out.t)
   E$P = P
-  E$out = epi.output(P,t,out.t)
-  E$tree = epi.tree(P,t,out.t)
+  E$out = epi.output(P,t.vec,out.t)
+  E$tree = epi.tree(P,t.vec,out.t)
   if (.debug){
-    E$A = dn.array(list('t'=t,'i'=seqn(P$N)),character())
-    for (tj in t){ Xij = out.t$Xi[[tj]]; for (h in names(Xij)){ E$A[tj,Xij[[h]]] = h } }
+    E$A = dn.array(list('t'=t.vec,'i'=seqn(P$N)),character())
+    for (tj in t.vec){ Xij = out.t$Xi[[tj]]; for (h in names(Xij)){ E$A[tj,Xij[[h]]] = h } }
   }
   return(E)
 }
 
-epi.net.attrs = function(G,t,out.t){
+epi.net.attrs = function(G,out.t){
   # add some attributes to G after running the model
   G$attr$i$inf.src = factor(G$i %in% out.t$Xi$t0$I,levels=c(F,T),labels=M$inf.src$name)
   G$attr$i$health.t0 = lookup.map(G$i, out.t$Xi$t0) # initial health state
@@ -152,9 +150,9 @@ epi.net.attrs = function(G,t,out.t){
   return(G)
 }
 
-epi.tree = function(P,t,out.t){
+epi.tree = function(P,t.vec,out.t){
   # clean up tree & compute a few properties
-  tree = do.call(rbind,lapply(t,function(tj){
+  tree = do.call(rbind,lapply(t.vec,function(tj){
     ii.IE.j = out.t$ii.IE[[tj]]
     cbind('par'=ii.IE.j[,1],'chi'=ii.IE.j[,2],'t'=rep(tj,nrow(ii.IE.j))) # parent (I), child (E), time (t)
   }))
@@ -174,7 +172,7 @@ epi.tree = function(P,t,out.t){
   return(tree)
 }
 
-epi.output = function(P,t,out.t){
+epi.output = function(P,t.vec,out.t){
   # clean-up outputs + compute a few extra
   N       = as.data.frame(do.call(rbind,out.t$N)) # num people in each health state, each day
   N$all   = P$N
@@ -182,7 +180,7 @@ epi.output = function(P,t,out.t){
   inc$all = rowSums(inc) # total incidence
   prev    = N / P$N # prevalence
   out  = cbind( # join these data column-wise
-    't' = t,
+    't' = t.vec,
     setNames(N,   paste0('N.',   names(N))),
     setNames(prev,paste0('prev.',names(prev))),
     setNames(inc, paste0('inc.', names(inc))))

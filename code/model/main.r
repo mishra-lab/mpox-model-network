@@ -5,20 +5,20 @@ source('model/params.r')
 source('model/epidemic.r')
 source('model/plot.r')
 
-.debug = FALSE
+.debug = TRUE
 
-t = epi.t(tf=180)
+t.vec = epi.t(tf=180)
 
 # DEBUG: run one
 # P = def.params(seed=0)
-# E = epi.run(P,t)
+# E = epi.run(P,t.vec)
 # plot.epidemic(epi.output.melt(E$out,P)); fig.save('.tmp/epidemic',w=8,h=4)
 # plot.network(E$P$G,list(fill='health'),list()); fig.save('.tmp/network',w=8,h=6)
 
 # build + run many
 N.s = 7
 P.s = def.params.s(N.s)
-E.s = epi.run.s(P.s,t)
+E.s = epi.run.s(P.s,t.vec)
 out.long.s = epi.output.melt.s(E.s)
 
 # plot prevalence

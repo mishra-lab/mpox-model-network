@@ -8,7 +8,7 @@ source('model/epidemic.r')
 source('model/plot.r')
 
 .debug = TRUE
-t = epi.t(tf=180)
+t.vec = epi.t(tf=180)
 
 fname = function(slug){
   # e.g. .../code/.tmp/handfit/2022-01-01/{slug}
@@ -18,7 +18,7 @@ fname = function(slug){
 handfit.run = function(seed=0,...){
   # run the model once
   P = def.params(seed=seed,...)
-  E = epi.run(P,t)
+  E = epi.run(P,t.vec)
 }
 
 handfit.plot.epidemic = function(E){
