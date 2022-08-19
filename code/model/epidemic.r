@@ -158,8 +158,8 @@ epi.tree = function(P,t.vec,out.t){
   }))
   # add dummy rows for seed cases
   tree = rbind(cbind('par'=rep(0,P$N.I0),'chi'=out.t$Xi$t0$I,'t'=rep(0,P$N.I0)),tree)
-  if (.debug){ # recurse.tree can get expensive
-    tree.data = recurse.tree(tree[,c('par','chi')],root=0)
+  if (.debug){ # tree.recurse can get expensive
+    tree.data = tree.recurse(tree[,c('par','chi')],root=0)
     tree = as.data.frame(tree)
     tree = rbind(c(-1,0,NA),tree) # another dummy node (fixes matching)
     tree = tree[match(tree.data[1,],tree$chi),] # re-order to match tree.data

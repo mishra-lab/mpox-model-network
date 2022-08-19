@@ -17,12 +17,12 @@ plot.network = function(G,i.aes=list(),e.aes=list()){
   g = add.meta.scales(g,e.aes)
 }
 
-plot.tree = function(tree,...,t.root=NA){
+plot.tree = function(tree,...,t.root=NA,pc.map=TRUE){
   # plot a transmission tree vs time
-  tree$t[1] = t.root # use negative value to connect I0 in the past
-  pc.map = match(tree$par,tree$chi)
-  tree$pos.par = tree$pos[pc.map]
-  tree$t.par = tree$t[pc.map]
+  if (pc.map){ # if faceting, need to pre-compute pc.map for each facet
+    tree$t[1] = t.root # use negative value to connect I0 in the past
+    tree = tree.pc.map(tree,c('t','pos'))
+  }
   args = list(...)
   map = list.update(list(fill='black',color='white',shape=21),args)
   b.aes = map %in% names(tree)

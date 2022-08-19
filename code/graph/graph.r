@@ -94,7 +94,7 @@ edges.sort.order = function(ii.e){
 # tree stuff
 
 .tree.tips <<- 0 # TODO: pass around internally?
-recurse.tree = function(ii,root=0,gen=0,pos=NULL){
+tree.recurse = function(ii,root=0,gen=0,pos=NULL){
   # assuming ii represents a tree, walk the tree (in given ordder) & return matrix with columns:
   # index (ordered by tree search), generation, position, n direct children, n total children
   if (is.null(pos)){ pos = 'child.range' }
@@ -102,7 +102,7 @@ recurse.tree = function(ii,root=0,gen=0,pos=NULL){
   i.childs = ii[b.root,2]
   if (any(b.root)){
     mat.childs = matrix(nrow=5,unlist(lapply(i.childs,function(i.child){
-      recurse.tree(ii=ii[!b.root,,drop=FALSE],root=i.child,gen=gen+1,pos=pos)
+      tree.recurse(ii=ii[!b.root,,drop=FALSE],root=i.child,gen=gen+1,pos=pos)
     })))
     root.pos = switch(pos,
       'tip.mean' = mean(mat.childs[3,]),
@@ -114,6 +114,18 @@ recurse.tree = function(ii,root=0,gen=0,pos=NULL){
     .tree.tips <<- .tree.tips + 1
     mat.root = matrix(nrow=5,c(root,gen,.tree.tips,0,0))
   }
+}
+
+tree.pc.map = function(tree,cols,par='par',chi='chi'){
+  # most row data in a tree corresponds to the child (in our implementation, anyways)
+  # here we lookup the parent of each child, and copy some data from those rows
+  # onto the same row as the child, creating new columns with suffix .par
+  # usually for plotting
+  pc.map = match(tree[[par]],tree[[chi]])
+  for (col in cols){
+    tree[[paste0(col,'.',par)]] = tree[[col]][pc.map]
+  }
+  return(tree)
 }
 
 # ==================================================================================================
