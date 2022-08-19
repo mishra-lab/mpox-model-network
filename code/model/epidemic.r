@@ -1,13 +1,13 @@
 library('reshape2')
 
-# TODO: rename U -> R (intuitive); R -> E (); t -> t.vec (transpose conflict)
+# TODO: rename t -> t.vec (transpose conflict)
 
 epi.t = function(t0=1,tf=180){
   t = seq(t0,tf)
 }
 
 epi.random.init = function(P,t){
-  # U is a list of pre-computed random numbers
+  # R is a list of pre-computed random numbers
   # which allow the exact same events to occur among every individual,
   # unless they are affected by vaccination or other intervention.
   # if we did not pre-compute these numbers, the random number stream
@@ -15,14 +15,14 @@ epi.random.init = function(P,t){
   # and the exact same events would not occur among other people
   # possibly resulting in "negative intervention impact" due to this extra randomness
   .Random.seed <<- P$seed.state # resume state we left off after def.params
-  U = list()
+  R = list()
   f.sex.e = P$G$attr$e$sex / P$G$attr$g$dur # sex frequency per partnership (per day)
-  U$e.sex.t = lapply(t,function(tj){ which(runif(P$G$N.e) < f.sex.e) }) # partnerships having sex each day
-  U$u.sex.t = lapply(U$e.sex.t,runif) # random number per sex-day (used to decide transmission)
-  U$dur.EI.i = P$dur.EI.rfun(P$N) # random dur per-person: from exposure to symptom onset (incubation)
-  U$dur.IR.i = P$dur.IR.rfun(P$N) # random dur per-person: from onset to recovery (infectious)
-  U$dur.IH.i = P$dur.IH.rfun(P$N) # random dur per-person: from onset to isolation (non-isolated)
-  return(U)
+  R$e.sex.t = lapply(t,function(tj){ which(runif(P$G$N.e) < f.sex.e) }) # partnerships having sex each day
+  R$r.sex.t = lapply(R$e.sex.t,runif) # random number per sex-day (used to decide transmission)
+  R$dur.EI.i = P$dur.EI.rfun(P$N) # random dur per-person: from exposure to symptom onset (incubation)
+  R$dur.IR.i = P$dur.IR.rfun(P$N) # random dur per-person: from onset to recovery (infectious)
+  R$dur.IH.i = P$dur.IH.rfun(P$N) # random dur per-person: from onset to isolation (non-isolated)
+  return(R)
 }
 
 epi.init.state = function(P){
@@ -64,31 +64,31 @@ epi.out.init = function(P,t,X){
   return(out.t)
 }
 
-epi.ii.transmit = function(P,U,tj,X){
+epi.ii.transmit = function(P,R,tj,X){
   # get i of newly infected (exposed)
-  ii.sex = P$G$ii.e[U$e.sex.t[[tj]],,drop=FALSE] # partners who had sex today
+  ii.sex = P$G$ii.e[R$e.sex.t[[tj]],,drop=FALSE] # partners who had sex today
   b.IA = ii.sex[,1] %in% X$i$I # IA partnership (among above, A = anything)
   b.AI = ii.sex[,2] %in% X$i$I # AI partnership
-  u.sex = U$u.sex.t[[tj]][c(which(b.IA),which(b.AI))] # random number for each partnership
+  r.sex = R$r.sex.t[[tj]][c(which(b.IA),which(b.AI))] # random number for each partnership
   ii.IA = rbind(ii.sex[b.IA,c(1,2)],ii.sex[b.AI,c(2,1)]) # IA partnerships (in that order)
   beta = lookup.map(ii.IA[,2], X$i, P$beta.health) # beta from health status (among above)
-  b.transmit = u.sex < beta
+  b.transmit = r.sex < beta
   ii.IE.j = ii.IA[b.transmit,,drop=FALSE] # infected, newly exposed
   ii.IE.j = ii.IE.j[!duplicated(ii.IE.j[,2]),,drop=FALSE] # remove double infections
 }
 
 epi.run = function(P,t){
   # run the epidemic
-  U = epi.random.init(P,t) # pre-compute all (most) random values
+  R = epi.random.init(P,t) # pre-compute all (most) random values
   X = epi.init.state(P) # indices of all health states, and durations of some of those
   out.t = epi.out.init(P,t,X) # initialize the output stuff
   for (tj in t){
     # computing transitions
-    ii.IE.j = epi.ii.transmit(P,U,tj,X)             # I{S,V1,V2} -> IE
-    b.EI.j = X$dur$E  > U$dur.EI.i[X$i$E]           # E -> I (end incubation)
-    b.IR.j = X$dur$I  > U$dur.IR.i[X$i$I]           # I -> R (end infectious / recovered)
-    b.IH.j = X$dur$I  > U$dur.IH.i[X$i$I] & !b.IR.j # I -> H (begin isolation)
-    b.HR.j = X$dur$IH > U$dur.IR.i[X$i$H]           # H -> R (end isolation / recovered)
+    ii.IE.j = epi.ii.transmit(P,R,tj,X)             # I{S,V1,V2} -> IE
+    b.EI.j = X$dur$E  > R$dur.EI.i[X$i$E]           # E -> I (end incubation)
+    b.IR.j = X$dur$I  > R$dur.IR.i[X$i$I]           # I -> R (end infectious / recovered)
+    b.IH.j = X$dur$I  > R$dur.IH.i[X$i$I] & !b.IR.j # I -> H (begin isolation)
+    b.HR.j = X$dur$IH > R$dur.IR.i[X$i$H]           # H -> R (end isolation / recovered)
     b.IA.j = b.IR.j | b.IH.j              # any reason to leave I (H or R)
     iRj = c(X$i$I[b.IR.j],X$i$H[b.HR.j])  # i of newly recovered (from I or H)
     iHj = X$i$I[b.IH.j]                   # i of newly isolating
@@ -127,21 +127,21 @@ epi.run = function(P,t){
 epi.run.s = function(P.s,t,parallel=TRUE){
   # run for multiple seeds, usually in parallel
   if (parallel){ lapply.fun = par.lapply } else { lapply.fun = lapply }
-  R.s = lapply.fun(P.s,function(P){ R = epi.run(P,t) })
+  E.s = lapply.fun(P.s,function(P){ E = epi.run(P,t) })
 }
 
 epi.results = function(P,t,out.t){
-  # collect some results
-  R = list()
+  # collect some results (renamed "R" -> "E")
+  E = list()
   P$G = epi.net.attrs(P$G,t,out.t)
-  R$P = P
-  R$out = epi.output(P,t,out.t)
-  R$tree = epi.tree(P,t,out.t)
+  E$P = P
+  E$out = epi.output(P,t,out.t)
+  E$tree = epi.tree(P,t,out.t)
   if (.debug){
-    R$A = dn.array(list('t'=t,'i'=seqn(P$N)),character())
-    for (tj in t){ Xij = out.t$Xi[[tj]]; for (h in names(Xij)){ R$A[tj,Xij[[h]]] = h } }
+    E$A = dn.array(list('t'=t,'i'=seqn(P$N)),character())
+    for (tj in t){ Xij = out.t$Xi[[tj]]; for (h in names(Xij)){ E$A[tj,Xij[[h]]] = h } }
   }
-  return(R)
+  return(E)
 }
 
 epi.net.attrs = function(G,t,out.t){
@@ -197,9 +197,9 @@ epi.output.melt = function(out,P){
   return(out.long)
 }
 
-epi.output.melt.s = function(R.s){
-  # apply epi.output.melt to a list of R.s -- e.g. from epi.run.s
-  out.long.s = kw.call(rbind,lapply(R.s,function(R){
-    out.long = epi.output.melt(R$out,R$P)
+epi.output.melt.s = function(E.s){
+  # apply epi.output.melt to a list of E.s -- e.g. from epi.run.s
+  out.long.s = kw.call(rbind,lapply(E.s,function(E){
+    out.long = epi.output.melt(E$out,E$P)
   }))
 }

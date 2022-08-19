@@ -11,15 +11,15 @@ t = epi.t(tf=180)
 
 # DEBUG: run one
 # P = def.params(seed=0)
-# R = epi.run(P,t)
-# plot.epidemic(epi.output.melt(R$out,P)); fig.save('.tmp/epidemic',w=8,h=4)
-# plot.network(R$P$G,list(fill='health'),list()); fig.save('.tmp/network',w=8,h=6)
+# E = epi.run(P,t)
+# plot.epidemic(epi.output.melt(E$out,P)); fig.save('.tmp/epidemic',w=8,h=4)
+# plot.network(E$P$G,list(fill='health'),list()); fig.save('.tmp/network',w=8,h=6)
 
 # build + run many
 N.s = 7
 P.s = def.params.s(N.s)
-R.s = epi.run.s(P.s,t)
-out.long.s = epi.output.melt.s(R.s)
+E.s = epi.run.s(P.s,t)
+out.long.s = epi.output.melt.s(E.s)
 
 # plot prevalence
 g = plot.epidemic(out.long.s,select=list(var='N',health=c('S','E','I','H','R','V1','V2'))) +
@@ -33,6 +33,6 @@ g = plot.epidemic(out.long.s,select=list(var='inc',health='all')) +
 q()
 # plot networks
 par.lapply(seq(N.s),function(s){
-  plot.network(R.s[[s]]$P$G,list(fill='health',color='inf.src',shape='inf.src'))
+  plot.network(E.s[[s]]$P$G,list(fill='health',color='inf.src',shape='inf.src'))
   fig.save('.tmp/net-',s,w=7,h=7)
 })
