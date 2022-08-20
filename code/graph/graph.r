@@ -1,5 +1,8 @@
 source('utils/all.r')
 
+# TODO: add comments per-function
+# TODO: change notation i -> n ("node" more cononical)
+
 # key notation:
 # G: a graph object
 # i: indices of nodes (people) in the graph
@@ -49,8 +52,34 @@ degrees.from.edges = function(i,ii.e){
 
 edges.random = function(i,shuffle=TRUE){
   N.i = len(i)
+  if (N.i == 0){ return(matrix(nrow=0,ncol=2)) }
   if (shuffle){ i = sample(i) }
   ii.e = edges.low.high(cbind(i[1:(N.i/2)],i[(N.i/2+1):N.i]))
+}
+
+edges.group.odds = function(i,g,or.gg,shuffle=TRUE){
+  # TODO: verify for > 1 edge per person
+  if (shuffle){ ord = order(sample(i)); i = i[ord]; g = g[ord] }
+  i.g = split(i,g) # split i by g
+  N.g = lens(i.g)  # count i by g
+  u.g = 1:len(N.g) # unique levels in g
+  N.gg.0 = outer(N.g,N.g)/sum(N.g)/2 # proportional mixing
+  N.gg = iter.prop.fit(exp(or.gg)*N.gg.0,N.g/2) # applying odds (preferences)
+  for (g in u.g){ N.gg[g,] = round.sum(N.gg[g,],N.g[g]/2) } # sum-preserving rounding
+  i.gg = lapply(u.g,function(g){ # assign i to each gg case
+    # e.g. i.gg[[1]][[2]] is the i in group 1 having edges with group 2
+    split(i.g[[g]],factor(rep(u.g,N.gg[g,]),u.g))
+  })
+  gg.m = combn(u.g,2)
+  ii.e = do.call(rbind,c( # build edges
+    lapply(u.g,function(g){ # for g1 = g2
+      ii.e.g = edges.random(i.gg[[g]][[g]],shuffle=FALSE)
+    }),
+    lapply(1:ncol(gg.m),function(m){ # for g1 != g2
+      g1 = gg.m[1,m]; g2 = gg.m[2,m];
+      ii.e.gg = edges.random(c(i.gg[[g1]][[g2]],i.gg[[g2]][[g1]]),shuffle=FALSE)
+    })
+  ))
 }
 
 edges.from.degrees = function(i,deg.i){
