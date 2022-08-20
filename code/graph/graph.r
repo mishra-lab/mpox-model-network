@@ -58,7 +58,6 @@ edges.random = function(i,shuffle=TRUE){
 }
 
 edges.group.odds = function(i,g,or.gg,shuffle=TRUE){
-  # TODO: verify for > 1 edge per person
   if (shuffle){ ord = order(sample(i)); i = i[ord]; g = g[ord] }
   i.g = split(i,g) # split i by g
   N.g = lens(i.g)  # count i by g
@@ -73,11 +72,11 @@ edges.group.odds = function(i,g,or.gg,shuffle=TRUE){
   gg.m = combn(u.g,2)
   ii.e = do.call(rbind,c( # build edges
     lapply(u.g,function(g){ # for g1 = g2
-      ii.e.g = edges.random(i.gg[[g]][[g]],shuffle=FALSE)
+      ii.e.g = edges.unloop(edges.random(i.gg[[g]][[g]],shuffle=FALSE))
     }),
     lapply(1:ncol(gg.m),function(m){ # for g1 != g2
       g1 = gg.m[1,m]; g2 = gg.m[2,m];
-      ii.e.gg = edges.random(c(i.gg[[g1]][[g2]],i.gg[[g2]][[g1]]),shuffle=FALSE)
+      ii.e.gg = edges.unloop(edges.random(c(i.gg[[g1]][[g2]],i.gg[[g2]][[g1]]),shuffle=FALSE))
     })
   ))
 }
