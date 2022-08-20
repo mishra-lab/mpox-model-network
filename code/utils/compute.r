@@ -2,7 +2,9 @@
 
 library('parallel')
 
-par.lapply = function(...,cores=7){
+.n.cores = 7 # allow default global override as par.lapply is often nested within functions
+
+par.lapply = function(...,cores=.n.cores){
   # simple wrapper for parallel::mclapply with some default arguments
   mclapply(...,
     mc.cores    = cores,
