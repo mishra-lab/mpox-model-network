@@ -14,6 +14,38 @@ cumsum.len = function(x,l,n){
   x.cs = unlist(lapply(split(x,g),cumsum))
 }
 
+iter.prop.fit = function(x,xs,tol=.1,iter.max=100){
+  # re-scales x row & column-wise to match the margins (row/col-sums) xs
+  # also ensures the result is exactly symmetric by averaging with the transpose
+  for (k in seqn(iter.max)){
+    s1 = rowSums(x)
+    x = x * rep(xs/s1,times=len(xs))
+    s2 = colSums(x)
+    x = x * rep(xs/s2,each=len(xs))
+    if (all(abs(s1-xs) < tol)){ return((x+t(x))/2) }
+  }
+  stop('No solution to iter.prop.fit with tol = ',tol)
+}
+
+round.sum = function(x,xs=NULL){
+  # rounds x, preserving xs = round(sum(x)) by rounding closest elements up / down
+  # e.g. round.sum(c(3.3,3.4,3.3)) -> c(3,4,3)
+  if (is.null(xs)){ xs = round(sum(x)) }
+  x1 = round(x)
+  xf = x %% 1
+  ds = sum(x1) - xs
+  if (ds < 0){
+    i = head(order(xf,decreasing=TRUE),-ds)
+    x1[i] = x1[i] + 1
+  }
+  if (ds > 0){
+    xf[x1==0] = NA
+    i = head(order(xf,decreasing=FALSE),ds)
+    x1[i] = x1[i] - 1
+  }
+  return(x1)
+}
+
 groups.even = function(N.i,N.g){
   # balanced rep(1:N.g) to total length N.i
   # e.g. seq.group(10,3) -> c(1,1,1,1, 2,2,2, 3,3,3)
