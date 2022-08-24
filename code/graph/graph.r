@@ -171,7 +171,7 @@ graph.layout.fr = function(G,niter=500,temp.pwr=.5,temp.tau=10,dc.pwr=1){
   temp = G$N.i^temp.pwr # initial speed
   rtemp = (1-log(2)*temp.tau/niter) # speed decay
   dc = G$N.i^dc.pwr # controls global spread
-  iie = c(G$ii.e) # pre-compute for speed
+  iie = as.factor(c(G$ii.e)) # pre-compute for speed
   pos = graph.layout.random(G) # random initial position
   b.tri = lower.tri(matrix(0,G$N.i,G$N.i),diag=TRUE) # pre-compute
   tri.0 = function(x){ x[b.tri] = 0; x }
@@ -191,8 +191,8 @@ graph.layout.fr = function(G,niter=500,temp.pwr=.5,temp.tau=10,dc.pwr=1){
     d1e = d1[G$ii.e]
     d2e = d2[G$ii.e]
     dde = dd[G$ii.e]
-    d1e.sum = aggregate(c(-d1e,d1e)*dde,list(iie),sum)$x
-    d2e.sum = aggregate(c(-d2e,d2e)*dde,list(iie),sum)$x
+    d1e.sum = sapply(split(c(-d1e,d1e)*dde,iie),sum)
+    d2e.sum = sapply(split(c(-d2e,d2e)*dde,iie),sum)
     # update pos & temp
     dpos = cbind(d1r.sum + d1e.sum, d2r.sum + d2e.sum)
     pos = pos + dpos * temp / sqrt(dpos[,1]^2 + dpos[,2]^2)
