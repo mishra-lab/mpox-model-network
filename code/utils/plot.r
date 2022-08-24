@@ -3,6 +3,7 @@
 suppressPackageStartupMessages({
   library('ggplot2')
   library('ggExtra')
+  library('ggridges')
   library('viridis')
 })
 

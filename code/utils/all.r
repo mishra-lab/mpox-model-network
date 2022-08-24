@@ -4,4 +4,4 @@ source('utils/files.r')
 source('utils/plot.r')
 source('utils/compute.r')
 options(width=200)
-
+options(stringsAsFactors=FALSE)

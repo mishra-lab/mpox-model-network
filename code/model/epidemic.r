@@ -201,3 +201,8 @@ epi.output.melt.s = function(E.s){
     out.long = epi.output.melt(E$out,E$P)
   }))
 }
+
+epi.tex = function(E){
+  # time of extinction (zero E or I)
+  tex = which((E$out$N.E + E$out$N.I) == 0)[1]
+}

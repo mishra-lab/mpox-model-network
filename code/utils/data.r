@@ -8,10 +8,13 @@ int.cut = function(x,low){
   x.cut = cut(x,breaks=c(low,Inf),labels=labels,right=FALSE)
 }
 
-cumsum.len = function(x,l,n){
+chunk.fun = function(x,l,n,fun){
+  # apply a function over n regular chunks of length l
+  # e.g. chunk.fun(1:9,3,fun=cumsum) -> c(1,3,6, 4,9,15, 7,15,24)
   if (missing(l)){ l = len(x)/n }
+  if (missing(n)){ n = len(x)/l }
   g = rep(1:n,each=l)
-  x.cs = unlist(lapply(split(x,g),cumsum))
+  x.c = unlist(lapply(split(x,g),fun))
 }
 
 iter.prop.fit = function(x,xs,tol=.1,iter.max=100){
@@ -74,14 +77,16 @@ sample.strat = function(x,n,strat=NULL,weights=NULL,cap.n=TRUE){
   }
 }
 
-row.select = function(x,select=list(),...){
+row.select = function(x,select=list(),...,.return='x'){
   # e.g. row.select(data.frame(x=c(1,2,3)),list(x=c(1,3))) -> data.frame(x=c(1,3))
-  i = rep(TRUE,nrow(x))
+  b = rep(TRUE,nrow(x))
   select = list.update(select,...)
   for (name in names(select)){
-    i = i & x[[name]] %in% select[[name]]
+    b = b & x[[name]] %in% select[[name]]
   }
-  return(x[i,])
+  return(switch(.return,
+    'x' = x[b,],
+    'b' = b))
 }
 
 join.str = function(...){
