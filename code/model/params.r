@@ -75,6 +75,6 @@ make.net = function(P.net){
   # graph object
   G = graph.obj(ii.e=ii.e,i=i,deg.i=par.i,g.attr=g.attr,i.attr=i.attr,e.attr=e.attr)
   # TODO: this results in .Random.seed depends on .debug: maybe move this after .Random.seed saved
-  if (.debug){ G$attr$g$layout = graph.layout(G) } # pre-compute consistent layout if needed
+  if (.debug){ G$attr$g$layout = graph.layout.fr(G) } # pre-compute consistent layout if needed
   return(G)
 }

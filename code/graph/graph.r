@@ -157,27 +157,52 @@ tree.pc.map = function(tree,cols,par='par',chi='chi'){
 }
 
 # ==================================================================================================
-# igraph stuff + plotting
+# layout + plotting
 
-.igraph = function(G){
-  i.deg.0 = which(G$deg.i==0)
-  if (len(i.deg.0) == 0){
-    iG = igraph::graph_from_edgelist(G$ii.e,dir=FALSE)
-  } else {
-    ii.e.tmp = cbind(i.deg.0,1)
-    ii.e = rbind(ii.e.tmp,G$ii.e)
-    iG = igraph::graph_from_edgelist(ii.e,dir=FALSE)
-    iG = igraph::delete_edges(iG,1:len(i.deg.0))
-  }
+graph.layout.random = function(G){
+  # layout nodes randomly (uniform) within unit circle, no consideration of edges
+  r = sqrt(runif(G$N.i))
+  t = runif(G$N.i) * 2 * pi
+  pos = matrix(c(r*cos(t),r*sin(t)),ncol=2)
 }
 
-graph.layout = function(G,...){
-  # TODO: keep disconnected groups a little closer?
-  layout = igraph::layout_with_fr(.igraph(G),...)
+graph.layout.fr = function(G,niter=500,temp.pwr=.5,temp.tau=10,dc.pwr=1){
+  # layout nodes using Fruchterman-Reingold algorithm (attract-repulse)
+  temp = G$N.i^temp.pwr # initial speed
+  rtemp = (1-log(2)*temp.tau/niter) # speed decay
+  dc = G$N.i^dc.pwr # controls global spread
+  iie = c(G$ii.e) # pre-compute for speed
+  pos = graph.layout.random(G) # random initial position
+  b.tri = lower.tri(matrix(0,G$N.i,G$N.i),diag=TRUE) # pre-compute
+  tri.0 = function(x){ x[b.tri] = 0; x }
+  for (k in 1:niter){
+    # if (k %% 10 == 0){ G$attr$g$layout = pos; print(plot.graph(G)) } # DEBUG
+    # distances - TODO: this can blow up, is there a faster/less-mem way?
+    d1 = outer(pos[,1],pos[,1],'-') # dx
+    d2 = outer(pos[,2],pos[,2],'-') # dy
+    dd = d1^2 + d2^2
+    # repulsive forces
+    ddr = (dc - dd * sqrt(dd)) / (dd * dc)
+    d1r = tri.0(d1) * ddr
+    d2r = tri.0(d2) * ddr
+    d1r.sum = rowSums(d1r,na.rm=TRUE) - colSums(d1r,na.rm=TRUE)
+    d2r.sum = rowSums(d2r,na.rm=TRUE) - colSums(d2r,na.rm=TRUE)
+    # attractive forces
+    d1e = d1[G$ii.e]
+    d2e = d2[G$ii.e]
+    dde = dd[G$ii.e]
+    d1e.sum = aggregate(c(-d1e,d1e)*dde,list(iie),sum)$x
+    d2e.sum = aggregate(c(-d2e,d2e)*dde,list(iie),sum)$x
+    # update pos & temp
+    dpos = cbind(d1r.sum + d1e.sum, d2r.sum + d2e.sum)
+    pos = pos + dpos * temp / sqrt(dpos[,1]^2 + dpos[,2]^2)
+    temp = temp * rtemp
+  }
+  pos = pos - rep(colMeans(pos),each=G$N.i) # return centred
 }
 
 plot.graph = function(G,i.aes=list(),e.aes=list()){
-  if (is.null(G$attr$g$layout)){ G$attr$g$layout = graph.layout(G) }
+  if (is.null(G$attr$g$layout)){ G$attr$g$layout = graph.layout.random(G) }
   # defaults
   i.aes = list.update(list(size=25/G$N.i^.4,shape=21),xu=i.aes)
   e.aes = list.update(list(curvature=0,alpha=.1),xu=e.aes)
@@ -201,4 +226,19 @@ plot.graph = function(G,i.aes=list(),e.aes=list()){
     guides(fill=guide_legend(override.aes=list(shape=21))) +
     coord_equal() +
     theme_void()
+}
+
+# ==================================================================================================
+# casting to igraph if needed
+
+.igraph = function(G){
+  i.deg.0 = which(G$deg.i==0)
+  if (len(i.deg.0) == 0){
+    iG = igraph::graph_from_edgelist(G$ii.e,dir=FALSE)
+  } else {
+    ii.e.tmp = cbind(i.deg.0,1)
+    ii.e = rbind(ii.e.tmp,G$ii.e)
+    iG = igraph::graph_from_edgelist(ii.e,dir=FALSE)
+    iG = igraph::delete_edges(iG,1:len(i.deg.0))
+  }
 }
