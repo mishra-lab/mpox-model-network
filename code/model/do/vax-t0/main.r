@@ -15,6 +15,14 @@ vt0$N.v = c(1000,3000,10000,30000)
 vt0$vax.cov.v = c(.2,.4,.6,.8)
 vt0$vax.eff.v = c(.2,.4,.6,.8)
 
+.fname = function(slug,ext,...){
+  f = paste0('vt0-',slug,'-t',vt0$tf,'-s',vt0$N.s,'-v',len(vt0$N.v),ext)
+  root.path(...,'vt0',f,create=TRUE)
+}
+
+vt0.fname.fig = function(slug){ .fname(slug,'','out','fig') }
+vt0.fname.rdata = function(slug){ .fname(slug,'.rdata','data','.rdata') }
+
 .clean.out.long = function(out.long,N.v,vax.cov.v,vax.eff.v){
   out.long$N       = factor(out.long$N,N.v,paste0(N.v))
   out.long$vax.cov = factor(out.long$vax.cov,vax.cov.v,paste0(100*vax.cov.v,'% Coverage'))
@@ -65,7 +73,7 @@ vt0.plot.cia = function(out.long,conf.int=.9){
     facet_grid('vax.cov ~ N') +
     scale_color_viridis(discrete=TRUE) + scale_fill_viridis(discrete=TRUE) +
     labs(color='',fill='',y='Cumulative Infections Averted (%)')
-  fig.save('vt0-plot-cia',w=8,h=6)
+  fig.save(vt0.fname.fig('plot-cia'),w=8,h=6)
 }
 
 vt0.plot.tex = function(out.long){
@@ -81,7 +89,7 @@ vt0.plot.tex = function(out.long){
     lims(x=c(0,vt0$tf)) +
     scale_color_viridis(discrete=TRUE) + scale_fill_viridis(discrete=TRUE) +
     labs(color='',fill='',y='Cumulative Probability of Extinction',x='Time to Extinction (days)')
-  fig.save('vt0-plot-tex',w=10,h=8)
+  fig.save(vt0.fname.fig('plot-tex'),w=10,h=8)
 }
 
 vt0.surface.cia = function(N.s=10,N.grid=7){
@@ -96,10 +104,12 @@ vt0.surface.cia = function(N.s=10,N.grid=7){
     geom_contour_filled(alpha=.8) +
     theme_light() +
     labs(x='Coverage (%)',y='Effect. (%)',fill='CIA (%)')
-  fig.save('vt0-surface-cia',w=10,h=8)
+  fig.save(vt0.fname.fig('surface-cia'),w=10,h=8)
 }
+
 if (sys.nframe() == 0){
   out.long = do.call(vt0.run.grid,vt0[c('N.s','N.v','vax.cov.v','vax.eff.v')])
+  save(file=vt0.fname.rdata('out-long'),out.long)
   out.long = .clean.out.long(out.long,vt0$N.v,vt0$vax.cov.v,vt0$vax.eff.v)
   vt0.plot.cia(out.long)
   vt0.plot.tex(out.long)
