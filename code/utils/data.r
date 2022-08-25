@@ -126,3 +126,8 @@ lookup.map = function(i,x,m=NULL){
   }
   return(y)
 }
+
+date.vec = function(t.vec,date.t0){
+  # e.g. date.vec(1:3,'2000-01-01') -> c('2000-01-01','2000-01-02','2000-01-03')
+  as.Date(date.t0) + t.vec - 1
+}
