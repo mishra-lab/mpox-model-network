@@ -69,10 +69,13 @@ vt0.plot.cia = function(out.long,conf.int=.9){
 }
 
 vt0.plot.tex = function(out.long){
-  # plot
-  g = ggplot(row.select(out.long,var='tex'),aes(x=value,color=vax.eff,fill=vax.eff)) +
-    # stat_ecdf(na.rm=TRUE) + # survival TODO: fix scale https://stackoverflow.com/questions/73480520
-    geom_density_ridges(aes(y=vax.eff),alpha=.5,bandwidth=3.5) + # ridges
+  # stupid hack as ecdf does not support NA
+  noise = function(x){ x + runif(len(x),-1e-9,+1e-9) } # avoid unique
+  cdf.adj = function(y,...){ unlist(lapply(split(y,list(...)),function(yi){
+    yi * (len(yi)-2) / def$N.s # only non-NA in yi, so we use len(yi) vs N.s to adjust; -2 from pad
+  })) }
+  g = ggplot(row.select(out.long,var='tex'),aes(x=noise(value),color=vax.eff,fill=vax.eff)) +
+    stat_ecdf(aes(y=after_stat(cdf.adj(y,group,PANEL)))) +
     facet_grid('vax.cov ~ N') +
     theme_light() +
     lims(x=c(0,def$tf)) +
