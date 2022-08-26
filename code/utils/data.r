@@ -131,3 +131,12 @@ date.vec = function(t.vec,date.t0){
   # e.g. date.vec(1:3,'2000-01-01') -> c('2000-01-01','2000-01-02','2000-01-03')
   as.Date(date.t0) + t.vec - 1
 }
+
+interp.fun = function(x,y,pad=FALSE){
+  # set-up inputs for spinterp so only xp is needed
+  if (pad){
+    x = c(x[1]-1,x,x[len(x)]+1)
+    y = c(y[1],y,y[len(y)])
+  }
+  function(xp){ pracma::spinterp(x,y,xp) }
+}
