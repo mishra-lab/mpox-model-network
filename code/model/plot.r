@@ -1,4 +1,13 @@
 
+add.geom_line_ribbon = function(g,map,conf.int=.9){
+  g = g + stat_summary(geom='line',fun=median,kw.call(aes_string,map))
+  for (ci in conf.int){
+    g = g + stat_summary(geom='ribbon',fun.data=median_hilow,fun.args=list(conf.int=ci),
+      kw.call(aes_string,list.update(map,fill=map$color,color=NULL)),alpha=.2)
+  }
+  return(g)
+}
+
 add.meta.scales = function(g,map){
   for (name in names(map)){
     value = map[[name]]
@@ -35,7 +44,7 @@ plot.tree = function(tree,...,t.root=NA,pc.map=TRUE){
     theme_light()
 }
 
-plot.add.tree.margin = function(g,fill=TRUE){
+add.tree.margin = function(g,fill=TRUE){
   # add marginal to tree, but must do this last as ggMarginal creates a gtable
   g = g + theme(legend.position='top')
   g = ggMarginal(g,type='hist',margins='y',lwd=.25,color='white',alpha=.8,groupFill=!is.null(fill),
@@ -63,14 +72,10 @@ plot.epidemic = function(out.long,select=list(),conf.int=.9,facet=NULL,color='he
   select = list.update(list(var='N'),select)
   map = list(color=color,...)
   g = ggplot(row.select(out.long,select),aes_string(x='t',y='value')) +
-    stat_summary(geom='line',fun=median,kw.call(aes_string,map)) +
     labs(x='Time (days)') +
     facet_grid(facet) +
     theme_light()
-  for (ci in conf.int){
-    g = g + stat_summary(geom='ribbon',fun.data=median_hilow,fun.args=list(conf.int=ci),
-      kw.call(aes_string,list.update(map,fill=color,color=NULL)),alpha=.2)
-  }
+  g = add.geom_line_ribbon(g,map,conf.int)
   g = add.meta.scales(g,list.update(map,fill=color))
   return(g)
 }
