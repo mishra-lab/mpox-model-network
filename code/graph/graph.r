@@ -63,7 +63,7 @@ edges.group.odds = function(i,g,or.gg,shuffle=TRUE){
   N.g = lens(i.g)  # count i by g
   u.g = 1:len(N.g) # unique levels in g
   N.gg.0 = outer(N.g,N.g)/sum(N.g)/2 # proportional mixing
-  N.gg = iter.prop.fit(exp(or.gg)*N.gg.0,N.g/2) # applying odds (preferences)
+  N.gg = iter.prop.fit(or.gg*N.gg.0,N.g/2) # applying odds (preferences)
   for (g in u.g){ N.gg[g,] = round.sum(N.gg[g,],N.g[g]/2) } # sum-preserving rounding
   i.gg = lapply(u.g,function(g){ # assign i to each gg case
     # e.g. i.gg[[1]][[2]] is the i in group 1 having edges with group 2
@@ -166,7 +166,7 @@ graph.layout.random = function(G){
   pos = matrix(c(r*cos(t),r*sin(t)),ncol=2)
 }
 
-graph.layout.fr = function(G,niter=500,temp.pwr=.5,temp.tau=10,dc.pwr=1){
+graph.layout.fr = function(G,niter=500,temp.pwr=.5,temp.tau=10,dc.pwr=1,gif.pos=NULL){
   # layout nodes using Fruchterman-Reingold algorithm (attract-repulse)
   temp = G$N.i^temp.pwr # initial speed
   rtemp = (1-log(2)*temp.tau/niter) # speed decay
@@ -177,6 +177,7 @@ graph.layout.fr = function(G,niter=500,temp.pwr=.5,temp.tau=10,dc.pwr=1){
   tri.0 = function(x){ x[b.tri] = 0; x }
   for (k in 1:niter){
     # if (k %% 10 == 0){ G$attr$g$layout = pos; print(plot.graph(G)) } # DEBUG
+    if (is.list(gif.pos)){ gif.pos[[k]] = pos } # DEBUG: gif
     # distances - TODO: this can blow up, is there a faster/less-mem way?
     d1 = outer(pos[,1],pos[,1],'-') # dx
     d2 = outer(pos[,2],pos[,2],'-') # dy
@@ -198,11 +199,12 @@ graph.layout.fr = function(G,niter=500,temp.pwr=.5,temp.tau=10,dc.pwr=1){
     pos = pos + dpos * temp / sqrt(dpos[,1]^2 + dpos[,2]^2)
     temp = temp * rtemp
   }
+  if (is.list(gif.pos)){ return(gif.pos) } # return gif.pos if using
   pos = pos - rep(colMeans(pos),each=G$N.i) # return centred
 }
 
 plot.graph = function(G,i.aes=list(),e.aes=list()){
-  if (is.null(G$attr$g$layout)){ G$attr$g$layout = graph.layout.random(G) }
+  if (is.null(G$attr$g$layout)){ G$attr$g$layout = graph.layout.fr(G) }
   # defaults
   i.aes = list.update(list(size=25/G$N.i^.4,shape=21),xu=i.aes)
   e.aes = list.update(list(curvature=0,alpha=.1),xu=e.aes)
@@ -218,11 +220,11 @@ plot.graph = function(G,i.aes=list(),e.aes=list()){
   if (len(G$attr$i)){ i.data = cbind(i.data,G$attr$i) }
   b.i = i.aes %in% names(G$attr$i)
   b.e = e.aes %in% names(G$attr$e)
-  g = ggplot() +
+  g = ggplot(data=i.data,aes(x=X,y=Y)) +
     kw.call(geom_curve,data=e.data,e.aes[!b.e],
       map=kw.call(aes_string,e.aes[b.e],x='X1',y='Y1',xend='X2',yend='Y2')) +
     kw.call(geom_point,data=i.data,i.aes[!b.i],
-      kw.call(aes_string,i.aes[b.i],x='X',y='Y')) +
+      kw.call(aes_string,i.aes[b.i])) +
     guides(fill=guide_legend(override.aes=list(shape=21))) +
     coord_equal() +
     theme_void()

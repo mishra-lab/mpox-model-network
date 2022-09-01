@@ -7,9 +7,9 @@ matrix.string = function(x,fmt='%d'){
   }))
 }
 
-get.args = function(N.g,or.gg,k.g){
+get.args = function(N.g,lo.gg,k.g){
   #   N.g: number of nodes per group
-  # or.gg: odds matrix of edges forming between groups
+  # lo.gg: log-odds matrix of edges forming between groups
   #   k.g: number of edges per node in each group
   m = len(N.g)
   if (missing(k.g)){ k.g = rep(1,m) }
@@ -23,7 +23,7 @@ get.args = function(N.g,or.gg,k.g){
     i.e = i.e,
     g.i = factor(g.i),
     g.e = factor(g.e),
-    or.gg = matrix(or.gg,m,m))
+    lo.gg = matrix(lo.gg,m,m))
 }
 
 test.edges.group.odds = function(){
@@ -35,19 +35,20 @@ test.edges.group.odds = function(){
     get.args(c(50,50),5*(1-diag(2))),
     get.args(c(40,30,20),0),
     get.args(c(40,30,20),c(5,0,0, 0,0,3, 0,3,0)),
-    get.args(c(50,50),0,c(1,2)),
-    get.args(c(50,50),3*diag(2),c(1,2)),
-    get.args(c(50,50),0,c(1,3)),
-    get.args(c(50,50),3*diag(2),c(1,3))
+    get.args(c(40,40),0,c(1,2)),
+    get.args(c(40,40),3*diag(2),c(1,2)),
+    get.args(c(40,40),0,c(1,3)),
+    get.args(c(40,40),3*diag(2),c(1,3))
   )
   for (a in args){
-    ii.e = do.call(edges.group.odds,list(i=a$i.e,g=a$g.e,or.gg=a$or.gg))
+    ii.e = do.call(edges.group.odds,list(i=a$i.e,g=a$g.e,or.gg=exp(a$lo.gg)))
     G = graph.obj(ii.e,i=a$i.i,i.attr=list(g=a$g.i))
+    # G$attr$g$layout = graph.layout.fr(G,niter=1e1)
     go = plot.graph(G,list(fill='g')) +
       scale_fill_viridis(option='inferno',discrete=TRUE,begin=.2,end=.9) +
-      ggtitle(matrix.string(a$or.gg))
+      ggtitle(matrix.string(a$lo.gg))
     print(go)
   }
 }
-
+set.seed(1)
 test.edges.group.odds()
