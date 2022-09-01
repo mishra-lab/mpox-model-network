@@ -9,7 +9,7 @@ source('model/plot.r')
 .debug = FALSE
 vt0 = list()
 vt0$tf = 360
-vt0$N.s = 100
+vt0$N.s = 10
 vt0$N = 1000
 vt0$N.v = c(1000,3000,10000,30000)
 vt0$vax.cov.v = c(.2,.4,.6,.8)
@@ -24,19 +24,34 @@ vt0.fname.fig = function(slug){ .fname(slug,'','out','fig') }
 vt0.fname.rdata = function(slug){ .fname(slug,'.rdata','data','.rdata') }
 
 .clean.out.long = function(out.long,N.v,vax.cov.v,vax.eff.v){
-  out.long$N       = factor(out.long$N,N.v,paste0(N.v))
+  b.inc = out.long$var=='inc'
+  out.long[b.inc,]$value = out.long[b.inc,]$value / out.long[b.inc,]$N
+  out.long$N       = factor(out.long$N,N.v,paste0('N = ',N.v))
   out.long$vax.cov = factor(out.long$vax.cov,vax.cov.v,paste0(100*vax.cov.v,'% Coverage'))
   out.long$vax.eff = factor(out.long$vax.eff,vax.eff.v,paste0(100*vax.eff.v,'% Effect.'))
   return(out.long)
 }
+
+.var.label = list(
+  'cia'  = 'Cumulative Infections Averted (%)',
+  'inc'  = 'Incidence',
+  'prev' = 'Prevalence'
+)
 
 vt0.run = function(seeds,N,vax.cov,vax.eff){
   print(sprintf('N = %d, cov = %.2f, eff = %.2f',N,vax.cov,vax.eff))
   t.vec = epi.t(tf=vt0$tf)
   P.s = def.params.s(seeds,N=N,N.V0=c(round(N*vax.cov),0),vax.eff.dose=c(vax.eff,0))
   E.s = epi.run.s(P.s,t.vec)
+  out.long.s.all = epi.output.melt.s(E.s)
   out.long.s = cbind(rbind(
-      row.select(epi.output.melt.s(E.s),var='inc',health='all'), # incidence
+      row.select(out.long.s.all,var='inc',health='all'),
+      row.select(out.long.s.all,var='inc',health='S'),
+      row.select(out.long.s.all,var='inc',health='V1'),
+      row.select(out.long.s.all,var='prev',health='E'),
+      row.select(out.long.s.all,var='prev',health='I'),
+      row.select(out.long.s.all,var='prev',health='H'),
+      row.select(out.long.s.all,var='prev',health='R'),
       data.frame(t=NA,value=sapply(E.s,epi.tex),var='tex',health='all',seed=seeds)), # extinction
     N=N,vax.cov=vax.cov,vax.eff=vax.eff)
 }
@@ -59,21 +74,22 @@ vt0.run.grid = function(N.s,N.v,vax.cov.v,vax.eff.v){
           out.long.v = vt0.run(N.s,N.v[i],vax.cov,vax.eff)
         }
         # cumulative infections averted
-        out.long.v[b.inc,]$var = 'cia'
-        out.long.v[b.inc,]$value = 100 * (cum.inf.v0[[i]] - cum.inf.fun(out.long.v)) / cum.inf.v0[[i]]
-        return(out.long.v)
+        out.long.v.cia = out.long.v[b.inc,]
+        out.long.v.cia$var = 'cia'
+        out.long.v.cia$value = 100 * (cum.inf.v0[[i]] - cum.inf.fun(out.long.v)) / cum.inf.v0[[i]]
+        return(rbind(out.long.v,out.long.v.cia))
       }))
     }))
   }))
 }
 
-vt0.plot.cia = function(out.long,conf.int=.9){
+vt0.plot.var = function(out.long,var='cia',health='all',conf.int=.9){
   # plot
-  g = plot.epidemic(out.long,select=list(var='cia'),color='vax.eff',conf.int=conf.int) +
+  g = plot.epidemic(out.long,select=list(var=var,health=health),color='vax.eff',conf.int=conf.int) +
     facet_grid('vax.cov ~ N') +
     scale_color_viridis(discrete=TRUE) + scale_fill_viridis(discrete=TRUE) +
-    labs(color='',fill='',y='Cumulative Infections Averted (%)')
-  fig.save(vt0.fname.fig('plot-cia'),w=8,h=6)
+    labs(color='',fill='',y=.var.label[[var]])
+  fig.save(vt0.fname.fig(paste0('plot-',var)),w=10,h=8)
 }
 
 vt0.plot.tex = function(out.long){
@@ -108,10 +124,15 @@ vt0.surface.cia = function(N.s=10,N.grid=7){
 }
 
 if (sys.nframe() == 0){
-  out.long = do.call(vt0.run.grid,vt0[c('N.s','N.v','vax.cov.v','vax.eff.v')])
-  save(file=vt0.fname.rdata('out-long'),out.long)
+  # out.long = do.call(vt0.run.grid,vt0[c('N.s','N.v','vax.cov.v','vax.eff.v')])
+  # save(file=vt0.fname.rdata('out-long'),out.long); q()
+  load(file=vt0.fname.rdata('out-long'))
   out.long = .clean.out.long(out.long,vt0$N.v,vt0$vax.cov.v,vt0$vax.eff.v)
-  vt0.plot.cia(out.long)
-  vt0.plot.tex(out.long)
-  vt0.surface.cia()
+  par.funs(out.long=out.long,list( # generate plots in parallel
+    list(vt0.plot.var,var='cia'),
+    list(vt0.plot.var,var='inc',health='all'),
+    list(vt0.plot.var,var='prev',health='I'),
+    list(vt0.plot.tex)
+  ))
+  # vt0.surface.cia()
 }
