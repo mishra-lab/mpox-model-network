@@ -20,7 +20,7 @@ epi.random.init = function(P,t.vec){
   R$b.asymp.i = runif(P$N) < P$p.asymp # random people who are asymptomatic
   R$dur.EI.i = P$dur.EI.rfun(P$N) # random dur per-person: from exposure to symptom onset (incubation)
   R$dur.IR.i = P$dur.IR.rfun(P$N) # random dur per-person: from onset to recovery (infectious)
-  R$dur.IH.i = P$dur.IH.rfun(P$N) # random dur per-person: from onset to isolation (non-isolated)
+  R$dur.IH.i = P$dur.IH.rfun(P$N) * P$dur.IH.scale # random dur per-person: from onset to isolation (non-isolated)
   return(R)
 }
 
