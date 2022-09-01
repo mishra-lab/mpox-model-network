@@ -1,11 +1,14 @@
 
-add.geom_line_ribbon = function(g,map,conf.int=.9){
-  g = g + stat_summary(geom='line',fun=median,kw.call(aes_string,map))
-  for (ci in conf.int){
-    g = g + stat_summary(geom='ribbon',fun.data=median_hilow,fun.args=list(conf.int=ci),
-      kw.call(aes_string,list.update(map,fill=map$color,color=NULL)),alpha=.2)
-  }
-  return(g)
+aggr.quantile = function(out.long,x,y,map,facet=NULL,ci=.9){
+  qci = c(.5,(1-ci)/2,1-(1-ci)/2)
+  if (!is.null(facet)){ map = c(map,strsplit(facet,'\\s?[~+]\\s?')[[1]]) }
+  strat = map[map %in% colnames(out.long)]
+  f = paste(y,'~',paste(c(x,strat),collapse=' + '))
+  out.long.q = do.call(data.frame,aggregate(formula(f),out.long,quantile,qci,names=F))
+}
+
+aes.quantile = function(x,y,map){
+  do.call(aes_string,c(list(x=x,y=paste0(y,'.1'),ymin=paste0(y,'.2'),ymax=paste0(y,'.3')),map))
 }
 
 add.meta.scales = function(g,map){
@@ -68,14 +71,16 @@ plot.distribution = function(P.s,gie,attr,vals,select=list(),...){
 
 plot.epidemic = function(out.long,select=list(),conf.int=.9,facet=NULL,color='health',...){
   # plot median for out.long$value, after selecting some rows
-  # out.long can also be out.long.s (e.g. from rbind), then we add confidence intervals (ci)
-  select = list.update(list(var='N'),select)
-  map = list(color=color,...)
-  g = ggplot(row.select(out.long,select),aes_string(x='t',y='value')) +
+  # out.long can also be out.long.s (e.g. from rbind), then we add ribbon confidence interval
+  out.long = row.select(out.long,list.update(list(var='N'),select))
+  map = list(color=color,fill=color,...)
+  out.long.q = aggr.quantile(out.long,x='t',y='value',map=map,facet=facet,ci=conf.int)
+  g = ggplot(out.long.q,aes.quantile(x='t',y='value',map=map)) +
+    geom_line() +
+    geom_ribbon(color=NA,alpha=.2) +
     labs(x='Time (days)') +
     facet_grid(facet) +
     theme_light()
-  g = add.geom_line_ribbon(g,map,conf.int)
   g = add.meta.scales(g,list.update(map,fill=color))
   return(g)
 }

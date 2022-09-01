@@ -85,8 +85,8 @@ vt0.run.grid = function(N.s,N.v,vax.cov.v,vax.eff.v){
 
 vt0.plot.var = function(out.long,var='cia',health='all',conf.int=.9){
   # plot
-  g = plot.epidemic(out.long,select=list(var=var,health=health),color='vax.eff',conf.int=conf.int) +
-    facet_grid('vax.cov ~ N') +
+  select = list(var=var,health=health)
+  g = plot.epidemic(out.long,select=select,color='vax.eff',facet='vax.cov ~ N',conf.int=conf.int) +
     scale_color_viridis(discrete=TRUE) + scale_fill_viridis(discrete=TRUE) +
     labs(color='',fill='',y=.var.label[[var]])
   fig.save(vt0.fname.fig(paste0('plot-',var)),w=10,h=8)
