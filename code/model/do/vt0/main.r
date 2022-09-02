@@ -8,8 +8,8 @@ source('model/plot.r')
 # config - TODO: surface stuff here too?
 .debug = FALSE
 vt0 = list()
-vt0$tf = 360
-vt0$N.s = 10
+vt0$tf = 365
+vt0$N.s = 100
 vt0$N = 1000
 vt0$N.v = c(1000,3000,10000,30000)
 vt0$vax.cov.v = c(.2,.4,.6,.8)
@@ -24,8 +24,10 @@ vt0.fname.fig = function(slug){ .fname(slug,'','out','fig') }
 vt0.fname.rdata = function(slug){ .fname(slug,'.rdata','data','.rdata') }
 
 .clean.out.long = function(out.long,N.v,vax.cov.v,vax.eff.v){
-  b.inc = out.long$var=='inc'
-  out.long[b.inc,]$value = out.long[b.inc,]$value / out.long[b.inc,]$N
+  b = out.long$var=='inc'
+  out.long[b,]$value = out.long[b,]$value / out.long[b,]$N * 365
+  b = out.long$var=='prev'
+  out.long[b,]$value = out.long[b,]$value * 100
   out.long$N       = factor(out.long$N,N.v,paste0('N = ',N.v))
   out.long$vax.cov = factor(out.long$vax.cov,vax.cov.v,paste0(100*vax.cov.v,'% Coverage'))
   out.long$vax.eff = factor(out.long$vax.eff,vax.eff.v,paste0(100*vax.eff.v,'% Effect.'))
@@ -34,8 +36,8 @@ vt0.fname.rdata = function(slug){ .fname(slug,'.rdata','data','.rdata') }
 
 .var.label = list(
   'cia'  = 'Cumulative Infections Averted (%)',
-  'inc'  = 'Incidence',
-  'prev' = 'Prevalence'
+  'inc'  = 'Incidence (per person-year)',
+  'prev' = 'Prevalence (%)'
 )
 
 vt0.run = function(seeds,N,vax.cov,vax.eff){
@@ -88,7 +90,8 @@ vt0.plot.var = function(out.long,var='cia',health='all',conf.int=.9){
   select = list(var=var,health=health)
   g = plot.epidemic(out.long,select=select,color='vax.eff',facet='vax.cov ~ N',conf.int=conf.int) +
     scale_color_viridis(discrete=TRUE) + scale_fill_viridis(discrete=TRUE) +
-    labs(color='',fill='',y=.var.label[[var]])
+    labs(color='',fill='',y=.var.label[[var]]) +
+    theme(legend.position='top')
   fig.save(vt0.fname.fig(paste0('plot-',var)),w=10,h=8)
 }
 
@@ -101,10 +104,10 @@ vt0.plot.tex = function(out.long){
   g = ggplot(row.select(out.long,var='tex'),aes(x=noise(value),color=vax.eff,fill=vax.eff)) +
     stat_ecdf(aes(y=after_stat(cdf.adj(y,group,PANEL)))) +
     facet_grid('vax.cov ~ N') +
-    theme_light() +
     lims(x=c(0,vt0$tf)) +
     scale_color_viridis(discrete=TRUE) + scale_fill_viridis(discrete=TRUE) +
     labs(color='',fill='',y='Cumulative Probability of Extinction',x='Time to Extinction (days)')
+  g = plot.clean(g)
   fig.save(vt0.fname.fig('plot-tex'),w=10,h=8)
 }
 
@@ -118,14 +121,14 @@ vt0.surface.cia = function(N.s=10,N.grid=7){
   # plot
   g = ggplot(out.long.agg,aes_string(x='100*vax.cov',y='100*vax.eff',z='value')) +
     geom_contour_filled(alpha=.8) +
-    theme_light() +
     labs(x='Coverage (%)',y='Effect. (%)',fill='CIA (%)')
+  g = plot.clean(g)
   fig.save(vt0.fname.fig('surface-cia'),w=10,h=8)
 }
 
 if (sys.nframe() == 0){
-  # out.long = do.call(vt0.run.grid,vt0[c('N.s','N.v','vax.cov.v','vax.eff.v')])
-  # save(file=vt0.fname.rdata('out-long'),out.long); q()
+  out.long = do.call(vt0.run.grid,vt0[c('N.s','N.v','vax.cov.v','vax.eff.v')])
+  save(file=vt0.fname.rdata('out-long'),out.long); q()
   load(file=vt0.fname.rdata('out-long'))
   out.long = .clean.out.long(out.long,vt0$N.v,vt0$vax.cov.v,vt0$vax.eff.v)
   par.funs(out.long=out.long,list( # generate plots in parallel
