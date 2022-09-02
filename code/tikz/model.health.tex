@@ -1,0 +1,15 @@
+\begin{tikzpicture}[x=1\dx,y=1.6\dx,->/.append style = {-latex}]
+  \node[state=S] (S) at (0,1) {$S$};
+  \node[state=V] (V) at (1,0) {$V$};
+  \node[state=E] (E) at (2,1) {$E$};
+  \node[state=I] (I) at (4,1) {$I$};
+  \node[state=H] (H) at (5,0) {$H$};
+  \node[state=R] (R) at (6,1) {$R$};
+  \draw[->] (S) -- (V);
+  \draw[->] (V) -- (E);
+  \draw[->] (S) -- (E);
+  \draw[->] (E) -- (I);
+  \draw[->] (I) -- (H);
+  \draw[->] (I) -- (R);
+  \draw[->] (H) -- (R);
+\end{tikzpicture}

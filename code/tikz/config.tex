@@ -1,0 +1,21 @@
+\input{../../docs/vt0/config}
+\usepackage{tikz}
+\newlength{\dx}\setlength{\dx}{2em}
+\tikzset{
+  state/.style = {
+    draw = #1,
+    fill = #1!20!white,
+    rounded corners = .5em,
+    minimum width = \dx,
+    minimum height = \dx,
+    inner sep = 0em,
+    text width = \dx,
+    align = center,
+  },
+}
+\definecolor{S}{HTML}{ffcc00}
+\definecolor{E}{HTML}{ff7700}
+\definecolor{I}{HTML}{ff0066}
+\definecolor{H}{HTML}{cc00cc}
+\definecolor{R}{HTML}{0099ff}
+\definecolor{V}{HTML}{33cc99}

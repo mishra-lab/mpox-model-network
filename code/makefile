@@ -12,3 +12,5 @@ do.benchmark:
 	Rscript model/do/benchmark/main.r && echo [OK]
 do.graph.test:
 	Rscript graph/test/edges.group.odds.r && echo [OK]
+do.tikz:
+	cd tikz && make all && echo [OK]
