@@ -21,6 +21,19 @@ handfit.run = function(seed=0,...){
   E = epi.run(P,t.vec)
 }
 
+handfit.plot.durs = function(P){
+  funs = list(
+    dur.EI = 'Incubation Period',
+    dur.IR = 'Infectious Period',
+    dur.IH = 'Non-Isolated Period')
+  clrs = unname(M$health$color[2:4])
+  rfuns = setNames(P[paste0(names(funs),'.rfun')],funs)
+  g = plot.rfuns(rfuns) +
+    scale_color_manual(values=clrs) +
+    scale_fill_manual(values=clrs)
+    fig.save(fname('rfuns'),w=8,h=5)
+}
+
 handfit.plot.epidemic = function(E){
   # main standard plots for one run
   # TODO: maybe add multiple model runs by default
@@ -89,6 +102,7 @@ handfit.network.gif = function(seed=0,N=100,tf=100,fps=10){
 
 .debug = TRUE
 E = handfit.run()
+handfit.plot.durs(E$P)
 handfit.plot.epidemic(E)
 handfit.plot.distribs(E)
 handfit.plot.tree(E)
