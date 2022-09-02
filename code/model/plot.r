@@ -11,6 +11,11 @@ aes.quantile = function(x,y,map){
   do.call(aes_string,c(list(x=x,y=paste0(y,'.1'),ymin=paste0(y,'.2'),ymax=paste0(y,'.3')),map))
 }
 
+plot.clean = function(g){
+  g = g + theme_light() +
+    theme(strip.background=element_rect(fill='gray90'),strip.text=element_text(color='black'))
+}
+
 add.meta.scales = function(g,map){
   for (name in names(map)){
     value = map[[name]]
@@ -43,8 +48,8 @@ plot.tree = function(tree,...,t.root=NA,pc.map=TRUE){
     geom_point(aes_string(color=map[b.aes]$fill,x='pos',y='t'),size=0) +
     kw.call(geom_point,map=kw.call(aes_string,map[b.aes],x='pos',y='t'),map[!b.aes]) +
     scale_x_continuous(labels=NULL,breaks=NULL) +
-    labs(y='Time (days)',x='') +
-    theme_light()
+    labs(y='Time (days)',x='')
+  g = plot.clean(g)
 }
 
 add.tree.margin = function(g,fill=TRUE){
@@ -54,7 +59,24 @@ add.tree.margin = function(g,fill=TRUE){
     yparams=list(binwidth=1))
 }
 
-plot.distribution = function(P.s,gie,attr,vals,select=list(),...){
+plot.durs = function(rfuns,n=1e5,xmax=30,dx=1){
+  x    = seq(0,xmax,dx)
+  data = do.call(rbind,lapply(names(rfuns),function(name){
+    y = rfuns[[name]](n)
+    pdf = hist(y,c(x-dx/2,Inf),plot=FALSE)$density * dx
+    var = factor(rep(1:2,each=len(x)),1:2,c('Duration','Survival Function'))
+    value = c(pdf,1-cumsum(pdf))
+    data.frame(x=x,value=value,var=var,name=name)
+  }))
+  g = ggplot(data,aes(x=x,y=value,color=name,fill=name)) +
+    geom_bar(stat='identity',alpha=.2,width=dx,color=NA,show.legend=FALSE) +
+    geom_step(position=position_nudge(x=-dx/2),show.legend=FALSE) +
+    facet_grid('var ~ name',scales='free_y') +
+    labs(x='Time (Days)',y='Distribution Value')
+  g = plot.clean(g)
+}
+
+plot.G.distr = function(P.s,gie,attr,vals,select=list(),...){
   # plot distribution(s) of attributes in P$G (or P.s)
   # note: no geom by default for flexibility; we just collect the histogram data
   if ('G' %in% names(P.s)){ P.s = list(P.s) }
@@ -64,9 +86,9 @@ plot.distribution = function(P.s,gie,attr,vals,select=list(),...){
   }))
   data = aggregate(f,row.select(data.raw,select),sum)
   data$x.cut = int.cut(data[[attr]],vals)
-  g = ggplot(row.select(data,select),aes_string(x='x.cut',y='.',...)) +
-    theme_light()
+  g = ggplot(row.select(data,select),aes_string(x='x.cut',y='.',...))
   g = add.meta.scales(g,list(...))
+  g = plot.clean(g)
 }
 
 plot.epidemic = function(out.long,select=list(),conf.int=.9,facet=NULL,color='health',...){
@@ -76,12 +98,12 @@ plot.epidemic = function(out.long,select=list(),conf.int=.9,facet=NULL,color='he
   map = list(color=color,fill=color,...)
   out.long.q = aggr.quantile(out.long,x='t',y='value',map=map,facet=facet,ci=conf.int)
   g = ggplot(out.long.q,aes.quantile(x='t',y='value',map=map)) +
-    geom_line() +
     geom_ribbon(color=NA,alpha=.2) +
+    geom_line() +
     labs(x='Time (days)') +
-    facet_grid(facet) +
-    theme_light()
+    facet_grid(facet)
   g = add.meta.scales(g,list.update(map,fill=color))
+  g = plot.clean(g)
   return(g)
 }
 
@@ -98,8 +120,8 @@ plot.doubling = function(E.s,lag=7,bw=3,conf.int=.9,facet=NULL){
   t2x.s.long = melt(t2x.s,id.vars=c('t','seed'),var='var')
   g = ggplot(t2x.s.long,aes_string(x='t',y='value')) +
     labs(x='Time (days)',y='Doubling Time (days)',color='Cases',fill='Cases') +
-    facet_grid(facet) +
-    theme_light()
-  g = add.geom_line_ribbon(g,list(color='var'),conf.int)
+    facet_grid(facet)
+  # g = add.geom_line_ribbon(g,list(color='var'),conf.int) # TODO
+  g = plot.clean(g)
 }
 
