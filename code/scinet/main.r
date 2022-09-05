@@ -2,15 +2,10 @@
 source('model/do/vt0/main.r')
 # config
 .n.cores = 80
-vt0$N.s = 100
-# run + plot
-out.long = do.call(vt0.run.grid,vt0[c('N.s','N.v','vax.cov.v','vax.eff.v')])
-save(file=vt0.fname.rdata('out-long'),out.long)
-load(file=vt0.fname.rdata('out-long'))
-out.long = .clean.out.long(out.long,vt0$N.v,vt0$vax.cov.v,vt0$vax.eff.v)
-par.funs(out.long=out.long,list( # generate plots in parallel
-  list(vt0.plot.var,var='cia'),
-  list(vt0.plot.var,var='inc',health='all'),
-  list(vt0.plot.var,var='prev',health='I'),
-  list(vt0.plot.tex)
-))
+vt0$obj1$N.s  = 100
+vt0$obj2a$N.s = 100
+vt0$obj2b$N.s = 100
+# run
+vt0.obj('obj1', .run=TRUE)
+vt0.obj('obj2a',.run=TRUE)
+vt0.obj('obj2b',.run=TRUE)

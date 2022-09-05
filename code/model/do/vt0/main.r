@@ -161,6 +161,8 @@ vt0.obj = function(case,.run=FALSE){
   g = kw.call(plot.epidemic,plot.args,select=list(var='prev',health='I')) + labs(y=.labs$prev); plot.save(g,'prev')
 }
 
-vt0.obj('obj1')
-vt0.obj('obj2a')
-vt0.obj('obj2b')
+if (sys.nframe() == 0){
+  vt0.obj('obj1')
+  vt0.obj('obj2a')
+  vt0.obj('obj2b')
+}
