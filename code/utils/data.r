@@ -1,5 +1,10 @@
 # some tools for data munging
 
+sum1 = function(x){
+  # ensure sums to 1
+  return(x/sum(x))
+}
+
 int.cut = function(x,low){
   # cut with simplified labels assuming integer data
   # e.g. int.cut(seq(6),c(1,2,3,5)) -> c("1","2","3 - 4", "3 - 4","5 +","5 +")

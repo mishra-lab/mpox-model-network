@@ -4,9 +4,9 @@ len = length
 lens = lengths
 seqn = seq_len
 
-sum1 = function(x){
-  # ensure sums to 1
-  return(x/sum(x))
+equal = function(x1,x2){
+  # comparison allowing NULL, and NULL == NULL is false
+  if (is.null(x1) || is.null(x2)){ eq = FALSE } else { eq = x1==x2 }
 }
 
 kw.call = function(fun,kwds,...){
