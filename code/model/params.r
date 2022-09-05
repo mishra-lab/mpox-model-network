@@ -5,7 +5,6 @@ def.params = function(seed=NULL,N=1000,...){
   # independent parameters (mostly)
   P$seed           = seed
   P$N              = N # pop size total
-  P$net.params     = def.params.net(P$N) # params for network
   P$N.I0           = 10 # number initially infected
   P$dur.EI.rfun   = r.fun(rlnorm,meanlog=2.09,sdlog=0.46,rmin=3,rmax=21) # incubation period
   P$dur.IR.rfun   = r.fun(rgamma,shape=36,scale=0.58,rmin=14,rmax=28) # infectious period
@@ -16,7 +15,9 @@ def.params = function(seed=NULL,N=1000,...){
   P$vax.eff.dose   = c(.85,.88) # vaccine effectiveness by dose
   P$N.V0           = c(.00,.00) * P$N # total number initially vaccinated by dose
   P$p.detect.t     = interp.fun(c(0,30),c(0,.85),pad=TRUE) # probability of detection vs t
+  P$par.scale      = 1 # relative number of partners
   P = list.update(P,...) # override any of the above
+  P$net.params     = def.params.net(P) # params for network - TODO: ok after update?
   # conditional parameters
   if (is.null(P$G)){ P$G = make.net(P$net.params) } # generate the sexual network
   P$beta.health = P$beta * # transmission prob by health state (susceptibility)
@@ -31,12 +32,12 @@ def.params.s = function(seeds,...){
   P.s = par.lapply(seeds,def.params,...)
 }
 
-def.params.net = function(N){
+def.params.net = function(P){
   P.net = list()
-  P.net$N = N
+  P.net$N = P$N
   P.net$dur = 6*30 # period of time reflected in the sexual network
   # will revise below based on p6m partners, stratified by had vs did not have main
-  P.net$par.rfun = r.fun(rgamma,shape=0.255,rate=0.032,shift=0.913) # partners in p6m
+  P.net$par.rfun = r.fun(rgamma,shape=0.255,rate=0.032/P$par.scale,shift=0.913) # partners in p6m
   P.net$main.i.frac = .2 # fraction of pop who have main partners
   P.net$main.w.par.power = -1 # when chosing who has main partners: weights = p6m ^ power
   P.net$main.sex.rfun = r.fun(rgamma,shape=5,rate=.2,shift=1) # sex per main partner in p6m
