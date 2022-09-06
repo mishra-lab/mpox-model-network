@@ -54,10 +54,11 @@ handfit.plot.G.distrs = function(E){
     labs(y='Individuals',x='Sex in past 6 months',fill='Main\nPartner\nP6M')
     fig.save(fname('i-sex-main'),w=8,h=4)
   # fill by health at tf (180)
-  plot.G.distr(E$P,'i','par',seq(1,20),fill='health.tf') + geom_col() +
+  E$P$G$attr$i$health = E$P$G$attr$i$health.tf
+  plot.G.distr(E$P,'i','par',seq(1,20),fill='health') + geom_col() +
     labs(y='Individuals',x='Partners in past 6 months')
     fig.save(fname('i-par-health'),w=8,h=4)
-  plot.G.distr(E$P,'i','sex',seq(0,100,10),fill='health.tf') + geom_col() +
+  plot.G.distr(E$P,'i','sex',seq(0,100,10),fill='health') + geom_col() +
     labs(y='Individuals',x='Sex in past 6 months')
     fig.save(fname('i-sex-health'),w=8,h=4)
 }
