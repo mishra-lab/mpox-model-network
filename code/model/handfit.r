@@ -37,28 +37,35 @@ handfit.plot.durs = function(P){
 handfit.plot.epidemic = function(E){
   # main standard plots for one run
   # TODO: maybe add multiple model runs by default
-  plot.epidemic(epi.output.melt(E$out,E$P)) +
+  g = plot.epidemic(epi.output.melt(E$out,E$P)) +
     labs(y='Individuals')
     fig.save(fname('epidemic'),w=8,h=4)
-  plot.epidemic(epi.output.melt(E$out,E$P),select=list(var='inc')) +
+  g = plot.epidemic(epi.output.melt(E$out,E$P),select=list(var='inc')) +
     labs(y='Incidence')
     fig.save(fname('incidence'),w=8,h=4)
 }
 
+handfit.plot.doubling = function(E){
+  g = plot.doubling(E,bw=7,lag=7,clip=60) +
+    scale_y_continuous(breaks=seq(-60,60,10),trans='nsqrt') +
+    lims(x=c(0,120))
+    fig.save(fname('doubling'),w=6,h=4)
+}
+
 handfit.plot.G.distrs = function(E){
   # fill by main partner
-  plot.G.distr(E$P,'i','par',seq(1,20),fill='main') + geom_col() +
+  g = plot.G.distr(E$P,'i','par',seq(1,20),fill='main') + geom_col() +
     labs(y='Individuals',x='Partners in past 6 months',fill='Main\nPartner\nP6M')
     fig.save(fname('i-par-main'),w=8,h=4)
-  plot.G.distr(E$P,'i','sex',seq(0,100,10),fill='main') + geom_col() +
+  g = plot.G.distr(E$P,'i','sex',seq(0,100,10),fill='main') + geom_col() +
     labs(y='Individuals',x='Sex in past 6 months',fill='Main\nPartner\nP6M')
     fig.save(fname('i-sex-main'),w=8,h=4)
   # fill by health at tf (180)
   E$P$G$attr$i$health = E$P$G$attr$i$health.tf
-  plot.G.distr(E$P,'i','par',seq(1,20),fill='health') + geom_col() +
+  g = plot.G.distr(E$P,'i','par',seq(1,20),fill='health') + geom_col() +
     labs(y='Individuals',x='Partners in past 6 months')
     fig.save(fname('i-par-health'),w=8,h=4)
-  plot.G.distr(E$P,'i','sex',seq(0,100,10),fill='health') + geom_col() +
+  g = plot.G.distr(E$P,'i','sex',seq(0,100,10),fill='health') + geom_col() +
     labs(y='Individuals',x='Sex in past 6 months')
     fig.save(fname('i-sex-health'),w=8,h=4)
 }
@@ -104,6 +111,7 @@ if (sys.nframe() == 0){
   .debug = TRUE
   E = handfit.run()
   handfit.plot.durs(E$P)
+  handfit.plot.doubling(E)
   handfit.plot.epidemic(E)
   handfit.plot.G.distrs(E)
   handfit.plot.tree(E)

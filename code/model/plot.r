@@ -107,21 +107,24 @@ plot.epidemic = function(out.long,select=list(),conf.int=.9,facet=NULL,color='he
   return(g)
 }
 
-plot.doubling = function(E.s,lag=7,bw=3,conf.int=.9,facet=NULL){
+plot.doubling = function(E.s,lag=7,bw=3,conf.int=.9,facet=NULL,clip=180){
   # compute and plot doubling time, with and without considering p.detect.t
   if (length(names(E.s))){ E.s = list(E.s) } # easy fix for E vs E.s
   t2x.s = do.call(rbind,lapply(E.s,function(E){
     t2x = data.frame(
       't' = E$out$t,
       'seed' = E$P$seed,
-      'Actual' = t.doubling(lag=lag,bw=bw,E$out$inc.all),
-      'Detected' = t.doubling(lag=lag,bw=bw,E$out$inc.all * E$P$p.detect.t(E$out$t)))
+      'Actual'   = t.doubling(lag=lag,bw=bw,clip=clip,E$out$inc.all),
+      'Detected' = t.doubling(lag=lag,bw=bw,clip=clip,E$out$inc.all * E$P$p.detect.t(E$out$t)))
   }))
-  t2x.s.long = melt(t2x.s,id.vars=c('t','seed'),var='var')
-  g = ggplot(t2x.s.long,aes_string(x='t',y='value')) +
+  map = list(color='Cases')
+  t2x.s.long = melt(t2x.s,id.vars=c('t','seed'),var='Cases')
+  t2x.s.long.q = aggr.quantile(t2x.s.long,'t','value',map=map,facet=facet)
+  g = ggplot(t2x.s.long.q,aes.quantile(x='t',y='value',map)) +
+    geom_line() +
+    geom_ribbon(color=NA,alpha=.2) +
     labs(x='Time (days)',y='Doubling Time (days)',color='Cases',fill='Cases') +
     facet_grid(facet)
-  # g = add.geom_line_ribbon(g,list(color='var'),conf.int) # TODO
   g = plot.clean(g)
 }
 

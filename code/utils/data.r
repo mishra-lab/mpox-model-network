@@ -153,9 +153,9 @@ gsmooth = function(x,bw=1){
   xs = convolve(x,kern,type='open')[(m+1):(m+len(x))]
 }
 
-t.doubling = function(x,lag=1,bw=1,clip=TRUE,pad=TRUE){
+t.doubling = function(x,lag=1,bw=1,clip=FALSE,pad=TRUE){
   # estimate doubling time of x after gaussian smoothing
   t2x = lag/diff(log(gsmooth(x,bw),base=2),lag=lag)
-  if (clip){ t2x = pmin(len(x),pmax(-len(x),t2x)) }
+  if (clip){ t2x = pmin(clip,pmax(-clip,t2x)) }
   if (pad){ t2x = c(t2x,rep(t2x[len(t2x)],lag)) }
 }
