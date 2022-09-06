@@ -72,13 +72,13 @@ make.net = function(P.net){
   e.attr = list()
   e.attr$sex = sex.e
   if (.debug){ # expensive / not required
-    # i.attr$sex = degrees.from.edges(i,ii.e) # TODO: re-implement using sex.e
+    i.attr$sex = aggregate(sex~i,cbind(i=c(ii.e),sex=sex.e),sum)$sex
     i.attr$main = factor(i %in% i.main,c(T,F),c('Yes','No'))
     e.attr$type = factor(c(rep('main',nrow(ii.e.main)),rep('casu',nrow(ii.e.casu))))
   }
   # graph object
   G = graph.obj(ii.e=ii.e,i=i,deg.i=par.i,g.attr=g.attr,i.attr=i.attr,e.attr=e.attr)
   # TODO: this results in .Random.seed depends on .debug: maybe move this after .Random.seed saved
-  if (.debug){ G$attr$g$layout = graph.layout.fr(G) } # pre-compute consistent layout if needed
+  if (.debug & G$N.i < 1000){ G$attr$g$layout = graph.layout.fr(G) } # pre-compute consistent layout
   return(G)
 }

@@ -146,8 +146,8 @@ epi.results = function(P,t.vec,out.t){
 epi.net.attrs = function(G,out.t){
   # add some attributes to G after running the model
   G$attr$i$inf.src = factor(G$i %in% out.t$Xi$t0$I,levels=c(F,T),labels=M$inf.src$name)
-  G$attr$i$health.t0 = lookup.map(G$i, out.t$Xi$t0) # initial health state
-  G$attr$i$health.tf = lookup.map(G$i, out.t$Xi$tf) # final health state
+  G$attr$i$health.t0 = factor(lookup.map(G$i, out.t$Xi$t0)) # initial health state
+  G$attr$i$health.tf = factor(lookup.map(G$i, out.t$Xi$tf)) # final health state
   return(G)
 }
 

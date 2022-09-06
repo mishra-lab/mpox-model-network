@@ -144,8 +144,8 @@ vt0.obj = function(case,.run=FALSE){
   plot.save = function(g,which){
     glab = .labs[[plot.args$color]]
     g = g + labs(color=glab,fill=glab) +
-      scale_color_viridis(discrete=is.factor(out.long[[plot.args$color]])) +
-      scale_fill_viridis(discrete=is.factor(out.long[[plot.args$color]])) +
+      scale_color_viridis(drop=FALSE,discrete=is.factor(out.long[[plot.args$color]])) +
+      scale_fill_viridis(drop=FALSE,discrete=is.factor(out.long[[plot.args$color]])) +
       theme(legend.position='top')
     fig.save(vt0.fname.fig(paste0(slug,'-',which)),w=5,h=8)
   }
