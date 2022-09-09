@@ -121,11 +121,12 @@ edges.sort.order = function(ii.e){
 # ==================================================================================================
 # tree stuff
 
-.tree.tips <<- 0 # TODO: pass around internally?
+.tree.tips <<- NULL
 tree.recurse = function(ii,root=0,gen=0,pos=NULL){
   # assuming ii represents a tree, walk the tree (in given ordder) & return matrix with columns:
   # index (ordered by tree search), generation, position, n direct children, n total children
   if (is.null(pos)){ pos = 'child.range' }
+  if (gen==0){ .tree.tips <<- 0 }
   b.root = ii[,1]==root
   i.childs = ii[b.root,2]
   if (any(b.root)){
