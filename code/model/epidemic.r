@@ -169,6 +169,7 @@ epi.tree = function(P,t.vec,out.t){
     tree$n.chi.dir = tree.data[4,] # number of direct children
     tree$n.chi.tot = tree.data[5,] # number of total direct + indirect children
     tree$dt = tree$t - tree$t[match(tree$par,tree$chi)] # generation time
+    tree = tree[2:nrow(tree),] # remove dummy node
   }
   return(tree)
 }
@@ -206,4 +207,15 @@ epi.output.melt.s = function(E.s){
 epi.tex = function(E){
   # time of extinction (zero E or I)
   tex = which((E$out$N.E + E$out$N.I) == 0)[1]
+}
+
+epi.R.gen = function(E,gen=2,i.gen.k=0,gen.k=0){
+  # compute empiric R for a given generation -- i.e. number of children
+  # default: 2nd generation, as an approximation of R0
+  b.gen.k = E$tree[,1] %in% i.gen.k
+  if (gen.k==gen){
+    R = tabulate(factor(E$tree[b.gen.k,1],i.gen.k)) # count times i.gen.k were parents
+  } else {
+    R = epi.R.gen(E,gen=gen,i.gen.k=E$tree[b.gen.k,2],gen.k=gen.k+1) # recurse w children as parents
+  }
 }
