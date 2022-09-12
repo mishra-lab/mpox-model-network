@@ -7,7 +7,7 @@ source('model/plot.r')
 
 .debug = FALSE
 vt0 = list()
-vt0$tf = 365
+vt0$tf = 180
 # base
 vt0$base$N.s     = 100
 vt0$base$N       = 10000
@@ -65,24 +65,27 @@ vt0.run = function(args){
     args)
 }
 
-vt0.run.grid = function(args){
+vt0.run.grid = function(args,out.i0=FALSE){
   # do vt0.run for a range of vax & other params, with vt0[[base]] as default params,
   # comparing vax > 0 vs vax=0 within each set of other params, and for multiple seeds
   args.vax   = expand.grid(list(vax.cov=args$vax.cov,vax.eff=args$vax.eff))
   args.other = expand.grid(list.update(args,vax.cov=NULL,vax.eff=NULL))
   out.long = do.call(rbind,lapply(1:nrow(args.other),function(i){
     out.long.i0 = vt0.run(as.list(cbind(args.other[i,],vax.cov=0,vax.eff=0))) # run no vax case
-    b.inc = row.select(out.long.i0,var='inc',.return='b') # pre-compute inc selector
+    b.inc = out.long.i0$var=='inc' # pre-compute inc selector
     cum.inf.fun = function(out.long.v){ chunk.fun(out.long.v[b.inc,]$value,l=vt0$tf,fun=cumsum) }
     cum.inf.i0 = cum.inf.fun(out.long.i0) # cumulative infections
-    out.long.i = do.call(rbind,lapply(1:nrow(args.vax),function(v){ # vax grid
+    out.long.i0 = rbind(out.long.i0,list.update(out.long.i0[b.inc,],var='ci',value=cum.inf.i0))
+    if (!out.i0){ out.long.i0 = NULL } # include out.long.i0 in output?
+    out.long.i = rbind(out.long.i0,do.call(rbind,lapply(1:nrow(args.vax),function(v){ # vax grid
       out.long.iv = vt0.run(as.list(cbind(args.other[i,],args.vax[v,]))) # run this vax case
       # cumulative infections averted
-      out.long.iv.cia = out.long.iv[b.inc,]
-      out.long.iv.cia$var = 'cia'
-      out.long.iv.cia$value = 100 * (cum.inf.i0 - cum.inf.fun(out.long.iv)) / cum.inf.i0
-      return(rbind(out.long.iv,out.long.iv.cia))
-    }))
+      cum.inf.iv  = cum.inf.fun(out.long.iv)
+      out.long.iv = rbind(out.long.iv,
+        list.update(out.long.iv[b.inc,],var='ci', value=cum.inf.iv),
+        list.update(out.long.iv[b.inc,],var='cia',value=100*(cum.inf.i0-cum.inf.iv)/cum.inf.i0)
+      )
+    })))
   }))
 }
 
@@ -120,16 +123,32 @@ vt0.clean.out.long = function(out.long,args){
 }
 
 .labs = list(
+  'scen'         = 'Scenario',
   'vax.cov'      = 'Coverage (%)',
   'vax.eff'      = 'Effectiveness (%)',
   'N'            = 'Population Size',
   'par.scale'    = 'Relative\nPartner Numbers',
   'p.asymp'      = 'Proportion Asymptomatic (%)',
   'dur.IH.scale' = 'Relative\nTime to Isolation',
+  'ci'           = 'Cumulative Infections',
   'cia'          = 'Cumulative Infections Averted (%)',
   'tex'          = 'Cumulative Probability of Extinction (%)',
   'inc'          = 'Incidence (per person-year)',
   'prev'         = 'Infection Prevalence (%)')
+
+vt0.example.cia = function(){
+  vars = c('Absolute Incidence'='inc','Cumulative Infections'='ci','Infections Averted (%)'='cia')
+  out.long = vt0.run.grid(list.update(vt0$base),out.i0=TRUE) # run base & vax scenarios
+  out.long = row.select(out.long,var=vars,health='all') # select outputs
+  out.long$varf = factor(out.long$var,levels=vars,labels=names(vars)) # pretty factor names
+  out.long$scen = factor(out.long$vax.cov,labels=c('No Vaccine','50% Coverage')) # pretty color names
+  g = plot.epidemic(out.long,select=list(var=vars),color='scen',facet='varf',scales='free_y') +
+    scale_color_manual(values=as.vector(M$health$color[c('I','V1')])) +
+    scale_fill_manual(values=as.vector(M$health$color[c('I','V1')])) +
+    labs(y='Cases',color=.labs$scen,fill=.labs$scen) +
+    theme(legend.position='top')
+  fig.save(vt0.fname.fig('example-cia'),w=5,h=7)
+}
 
 vt0.obj = function(case,.run=FALSE){
   args = vt0[[case]]
@@ -162,7 +181,8 @@ vt0.obj = function(case,.run=FALSE){
 }
 
 if (sys.nframe() == 0){
-  vt0.obj('obj1')
-  vt0.obj('obj2a')
-  vt0.obj('obj2b')
+  vt0.example.cia()
+  # vt0.obj('obj1')
+  # vt0.obj('obj2a')
+  # vt0.obj('obj2b')
 }

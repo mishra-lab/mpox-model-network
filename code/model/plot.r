@@ -91,7 +91,7 @@ plot.G.distr = function(P.s,gie,attr,vals,select=list(),...){
   g = plot.clean(g)
 }
 
-plot.epidemic = function(out.long,select=list(),conf.int=.9,facet=NULL,color='health',...){
+plot.epidemic = function(out.long,select=list(),conf.int=.9,facet=NULL,color='health',scales=NULL,...){
   # plot median for out.long$value, after selecting some rows
   # out.long can also be out.long.s (e.g. from rbind), then we add ribbon confidence interval
   out.long = row.select(out.long,list.update(list(var='N'),select))
@@ -101,7 +101,7 @@ plot.epidemic = function(out.long,select=list(),conf.int=.9,facet=NULL,color='he
     geom_ribbon(color=NA,alpha=.2) +
     geom_line() +
     labs(x='Time (days)') +
-    facet_grid(facet)
+    facet_grid(facet,scales=scales)
   g = add.meta.scales(g,list.update(map,fill=color))
   g = plot.clean(g)
   return(g)
