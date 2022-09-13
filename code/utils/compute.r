@@ -4,12 +4,13 @@ library('parallel')
 
 .n.cores = 7 # allow default global override as par.lapply is often nested within functions
 
-par.lapply = function(...,cores=.n.cores){
+par.lapply = function(...,cores=.n.cores,.par=TRUE){
   # simple wrapper for parallel::mclapply with some default arguments
-  mclapply(...,
-    mc.cores    = cores,
-    mc.set.seed = FALSE
-  )
+  if (.par){
+    mclapply(...,mc.cores=cores,mc.set.seed=FALSE)
+  } else {
+    lapply(...)
+  }
 }
 
 par.funs = function(fun.args,...){
@@ -17,6 +18,20 @@ par.funs = function(fun.args,...){
   par.lapply(fun.args,function(fa){
     do.call(fa[[1]],c(fa[1+seqn(len(fa)-1)],list(...)))
   })
+}
+
+optim.brute = function(fun,rng,n=21,d=0,.par=TRUE){
+  # find x which minimizes fun within range rng, by brute force
+  # evaluate fun at n points within rng
+  # d > 0 recurses to improve precision by ~ 1/(n-1)
+  x.i = seq(rng[1],rng[2],l=n)
+  e.i = unlist(par.lapply(x.i,fun,.par=.par))
+  if (d > 0){
+    x.rng = sort(x.i[match(sort(e.i)[2:3],e.i)]) # use adjacent points to minimum, in case skew
+    x.min = optim.brute(fun,x.rng,n=n,d=d-1,.par=.par) # recurse with new range and d-1
+  } else {
+    x.min = x.i[min(e.i)==e.i] # best estimate
+  }
 }
 
 load.bar = function(i,N,width=100){

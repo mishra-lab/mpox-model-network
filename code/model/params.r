@@ -26,10 +26,10 @@ def.params = function(seed=NULL,N=1000,...){
   return(P)
 }
 
-def.params.s = function(seeds,...){
+def.params.s = function(seeds,...,.par=TRUE){
   # run def.params for a number (or vector) of seeds, parallel because net gen is expensive
   if (len(seeds)==1){ seeds = seqn(seeds) }
-  P.s = par.lapply(seeds,def.params,...)
+  P.s = par.lapply(seeds,def.params,...,.par=.par)
 }
 
 def.params.net = function(P){

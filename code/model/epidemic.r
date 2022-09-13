@@ -123,10 +123,9 @@ epi.run = function(P,t.vec){
   return(epi.results(P,t.vec,out.t))
 }
 
-epi.run.s = function(P.s,t.vec,parallel=TRUE){
+epi.run.s = function(P.s,t.vec,.par=TRUE){
   # run for multiple seeds, usually in parallel
-  if (parallel){ lapply.fun = par.lapply } else { lapply.fun = lapply }
-  E.s = lapply.fun(P.s,function(P){ E = epi.run(P,t.vec) })
+  E.s = par.lapply(P.s,function(P){ E = epi.run(P,t.vec) },.par=.par)
 }
 
 epi.results = function(P,t.vec,out.t){
