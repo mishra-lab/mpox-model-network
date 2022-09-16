@@ -208,13 +208,18 @@ epi.tex = function(E){
   tex = which((E$out$N.E + E$out$N.I) == 0)[1]
 }
 
-epi.R.gen = function(E,gen=2,i.gen.k=0,gen.k=0){
-  # compute empiric R for a given generation -- i.e. number of children
-  # default: 2nd generation, as an approximation of R0
-  b.gen.k = E$tree[,1] %in% i.gen.k
-  if (gen.k==gen){
-    R = tabulate(factor(E$tree[b.gen.k,1],i.gen.k)) # count times i.gen.k were parents
-  } else {
-    R = epi.R.gen(E,gen=gen,i.gen.k=E$tree[b.gen.k,2],gen.k=gen.k+1) # recurse w children as parents
+epi.R.gen = function(E,gen=1,i.gen.k=0,gen.k=0){
+  # compute empiric R for given generation(s) -- i.e. number of children
+  # default: 1nd generation, as an approximation of R0
+  b.gen.k = E$tree[,1] %in% i.gen.k # parents this generation
+  if (gen.k==gen[len(gen)]){
+    R = as.vector(table(factor(E$tree[b.gen.k,1],i.gen.k))) # count times i.gen.k were parents
+  } else { # we have to go deeper
+    if (gen.k %in% gen){
+      i.gen.k = unique(c(i.gen.k,E$tree[b.gen.k,2])) # including this generation
+    } else {
+      i.gen.k = E$tree[b.gen.k,2] # skipping this generation
+    }
+    R = epi.R.gen(E,gen=gen,i.gen.k=i.gen.k,gen.k=gen.k+1) # recurse w children as parents
   }
 }
