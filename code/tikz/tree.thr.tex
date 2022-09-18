@@ -1,0 +1,43 @@
+\begin{tikzpicture}[x=\dx,y=2\dx,->/.append style = {-latex}]
+  \node[node=R] (1)    at (15,  1) {};
+  \node[node=R] (2)    at (17,  1) {};
+  \node[node=R] (3)    at (19.5,1) {};
+  \node[node=R] (4)    at (22.5,1) {};
+  \node[node=I] (11)   at (14,  2) {}; \draw[->] (1)   -- (11);
+  \node[node=I] (12)   at (15,  2) {}; \draw[->] (1)   -- (12);
+  \node[node=I] (13)   at (16,  2) {}; \draw[->] (1)   -- (13);
+  \node[node=I] (31)   at (18,  2) {}; \draw[->] (3)   -- (31);
+  \node[node=I] (32)   at (20.5,2) {}; \draw[->] (3)   -- (32);
+  \node[node=I] (41)   at (22.5,2) {}; \draw[->] (4)   -- (41);
+  \node[node=E] (111)  at (14,  3) {}; \draw[->] (11)  -- (111);
+  \node[node=E] (131)  at (15.5,3) {}; \draw[->] (13)  -- (131);
+  \node[node=E] (132)  at (16.5,3) {}; \draw[->] (13)  -- (132);
+  \node[node=E] (311)  at (18,  3) {}; \draw[->] (31)  -- (311);
+  \node[node=E] (321)  at (19.5,3) {}; \draw[->] (32)  -- (321);
+  \node[node=E] (322)  at (20.5,3) {}; \draw[->] (32)  -- (322);
+  \node[node=E] (323)  at (21.5,3) {}; \draw[->] (32)  -- (323);
+  \node[node=E] (411)  at (22.5,3) {}; \draw[->] (41)  -- (411);
+  \node[node=S] (1111) at (14,  4) {}; \draw[dashed,->] (111) -- (1111);
+  \node[node=S] (1112) at (15,  4) {}; \draw[dashed,->] (111) -- (1112);
+  \node[node=S] (1321) at (16,  4) {}; \draw[dashed,->] (132) -- (1321);
+  \node[node=S] (1322) at (17,  4) {}; \draw[dashed,->] (132) -- (1322);
+  \node[node=S] (3211) at (18,  4) {}; \draw[dashed,->] (321) -- (3211);
+  \node[node=S] (3212) at (19,  4) {}; \draw[dashed,->] (321) -- (3212);
+  \node[node=S] (3213) at (20,  4) {}; \draw[dashed,->] (321) -- (3213);
+  \node[node=S] (3214) at (21,  4) {}; \draw[dashed,->] (321) -- (3214);
+  \node[node=S] (4111) at (22,  4) {}; \draw[dashed,->] (411) -- (4111);
+  \node[node=S] (4112) at (23,  4) {}; \draw[dashed,->] (411) -- (4112);
+  \foreach \i in {14,...,23}{
+    \node[node=S] at (\i,5.0) {};
+    \node[node=S] at (\i,5.5) {}; }
+  \foreach \gy/\glab in {1/g-1,2/g,3/g+1,4/g+2}{
+    \node[anchor=west] at (12,\gy) {$\glab$};}
+  \foreach \vx/\vy in {19.5/3,15.5/3,16/4,20/4,14/5.0,22/5.0,16/5.0,17/5.5,20/5.5}{
+    \node[node=V,vax] at (\vx,\vy) {};}
+  \draw[thick,brace=1ex] (23.5,3.1) -- (23.5,1.9);
+  \node[anchor=west] at (24,2.5)
+    {$R_e(g) = \displaystyle\frac{\textcolor{E}{8}-\textcolor{V}{2}}{\textcolor{I}{6}}$};
+  \draw[thick,brace=1ex] (24.5,5.6) -- (24.5,2.9);
+  \node[anchor=west] at (25,4.25)
+    {$\theta(g) = \displaystyle\frac{\textcolor{V}{9}}{\textcolor{S}{30}+\textcolor{E}{8}}$};
+\end{tikzpicture}

@@ -1,5 +1,6 @@
 \input{../../docs/vt0/config}
 \usepackage{tikz}
+\usetikzlibrary{decorations.pathreplacing}
 \newlength{\dx}\setlength{\dx}{2em}
 \tikzset{
   state/.style = {
@@ -11,6 +12,26 @@
     inner sep = 0em,
     text width = \dx,
     align = center,
+  },
+  node/.style = {
+    draw = white,
+    fill = #1!67!white,
+    thick,
+    circle,
+    inner sep = 0pt,
+    minimum width = .5\dx,
+    minimum height = .5\dx,
+  },
+  vax/.style = {
+    draw = V,
+    line width = .067\dx,
+    fill = none,
+    minimum width = .6\dx,
+    minimum height = .6\dx,
+  },
+  brace/.style = {
+    decorate,
+    decoration={brace,amplitude=#1},
   },
 }
 \definecolor{S}{HTML}{ffcc00}
