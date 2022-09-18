@@ -67,6 +67,13 @@ sample.i = function(i,p){
   i[runif(len(i)) < p]
 }
 
+sample.wtd = function(x,w,n=len(x)){
+  # same as sample(x,prob=w) but much faster
+  # https://stackoverflow.com/a/15205104/5228288
+  key = runif(len(x)) ^ (1/w)
+  x.sample = x[order(key,decreasing=TRUE)][1:n]
+}
+
 sample.strat = function(x,n,strat=NULL,weights=NULL,cap.n=TRUE){
   # sampling, possibly with stratification & weights; also maybe ensure n.i < len(x.i)
   if (is.null(weights)){
