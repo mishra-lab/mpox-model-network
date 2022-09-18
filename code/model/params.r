@@ -6,6 +6,7 @@ def.params = function(seed=NULL,N=1000,...){
   P$seed           = seed
   P$N              = N # pop size total
   P$N.I0           = 10 # number initially infected
+  P$exp.par.I0     = 1 # degree-exponent weight for initially infected
   P$dur.EI.rfun   = r.fun(rlnorm,meanlog=2.09,sdlog=0.46,rmin=3,rmax=21) # incubation period
   P$dur.IR.rfun   = r.fun(rgamma,shape=36,scale=0.58,rmin=14,rmax=28) # infectious period
   P$dur.IH.rfun   = r.fun(rgamma,shape=1.23,scale=4.05,rmin=2,rmax=20) # non-isolated period
