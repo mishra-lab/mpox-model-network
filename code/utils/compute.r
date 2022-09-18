@@ -20,20 +20,6 @@ par.funs = function(fun.args,...){
   })
 }
 
-optim.brute = function(fun,rng,n=21,d=0,.par=TRUE){
-  # find x which minimizes fun within range rng, by brute force
-  # evaluate fun at n points within rng
-  # d > 0 recurses to improve precision by ~ 1/(n-1)
-  x.i = seq(rng[1],rng[2],l=n)
-  e.i = unlist(par.lapply(x.i,fun,.par=.par))
-  if (d > 0){
-    x.rng = sort(x.i[match(sort(e.i)[2:3],e.i)]) # use adjacent points to minimum, in case skew
-    x.min = optim.brute(fun,x.rng,n=n,d=d-1,.par=.par) # recurse with new range and d-1
-  } else {
-    x.min = x.i[min(e.i)==e.i] # best estimate
-  }
-}
-
 load.bar = function(i,N,width=100){
   if (missing(i) && missing(N)){ i=100; N=100; fin=TRUE } else {fin=FALSE}
   if (0 == (i %% (N/width))) {
