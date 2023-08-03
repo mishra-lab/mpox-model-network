@@ -54,17 +54,17 @@ handfit.plot.doubling = function(E){
 
 handfit.plot.G.distrs = function(E){
   # fill by main partner
-  g = plot.G.distr(E$P,'i','par',seq(1,20),fill='main') + geom_col() +
+  g = plot.G.distr(E$P,'i','deg',seq(1,20),fill='main') + geom_col() +
     labs(y='Individuals',x='Partners in past 6 months',fill='Main\nPartner\nP6M')
-    fig.save(fname('i-par-main'),w=8,h=4)
+    fig.save(fname('i-deg-main'),w=8,h=4)
   g = plot.G.distr(E$P,'i','sex',seq(0,100,10),fill='main') + geom_col() +
     labs(y='Individuals',x='Sex in past 6 months',fill='Main\nPartner\nP6M')
     fig.save(fname('i-sex-main'),w=8,h=4)
   # fill by health at tf (180)
   E$P$G$attr$i$health = E$P$G$attr$i$health.tf
-  g = plot.G.distr(E$P,'i','par',seq(1,20),fill='health') + geom_col() +
+  g = plot.G.distr(E$P,'i','deg',seq(1,20),fill='health') + geom_col() +
     labs(y='Individuals',x='Partners in past 6 months')
-    fig.save(fname('i-par-health'),w=8,h=4)
+    fig.save(fname('i-deg-health'),w=8,h=4)
   g = plot.G.distr(E$P,'i','sex',seq(0,100,10),fill='health') + geom_col() +
     labs(y='Individuals',x='Sex in past 6 months')
     fig.save(fname('i-sex-health'),w=8,h=4)
