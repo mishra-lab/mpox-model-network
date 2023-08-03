@@ -9,7 +9,6 @@ source('model/plot.r')
 
 thr = list()
 thr$tf = 180
-thr$gen.max = 7
 # base
 thr$base$N       = 10000
 thr$base$N.z.epi = 100
@@ -18,6 +17,7 @@ thr$base$N.I0    = 10
 thr$base$exp.deg.I0  = 0
 thr$base$exp.deg.vax = 0
 thr$base$vax.eff = .70
+thr$base$gen.max = 7
 
 t.vec = epi.t(tf=thr$tf)
 
@@ -53,7 +53,7 @@ thr.out = function(E,args,q.step=.01,deg.max=180){
     value = NA)
   tree = thr.tree.gen(as.data.frame(E$tree)) # add generation column to E$tree
   # for each: generation
-  out = rbind.lapply(1:max(tree$gen),function(gen){
+  out = rbind.lapply(1:args$gen.max,function(gen){
     out.gz.tmp$gen = gen
     out.g.tmp$gen  = gen
     tree.g = tree[tree$gen==gen,] # transmission pairs
@@ -85,13 +85,13 @@ thr.out.grid = function(args){
   out.grid = rbind.lapply(1:nrow(args.grid),function(i){ # for each combo:
     args.i = args.grid[i,]; print(args.i) # slice & print args
     E = epi.run(kw.call(def.params,args.i),t.vec) # run the epidemic
-    out.i = cbind(args.i[c('N.I0','exp.deg.I0','exp.deg.vax','vax.eff','seed')],thr.out(E,args.i))
+    out.i = cbind(args.i[c('N.I0','exp.deg.I0','exp.deg.vax','vax.eff','gen.max','seed')],thr.out(E,args.i))
   },.par=TRUE)
 }
 
 plot.Re = function(out.grid,facet=NULL,clr=NULL,...){
   f = formula.fun('value','strat',facet,clr,...)
-  out.grid.Re = aggregate(f,row.select(out.grid,var='Re',gen=1:thr$gen.max),mean.le.1)
+  out.grid.Re = aggregate(f,row.select(out.grid,var='Re'),mean.le.1)
   g = ggplot(out.grid.Re,aes(y=100*value,x=100*strat,!!!ensyms(color=clr,fill=clr,...))) +
     facet_grid(facet) +
     geom_ribbon(aes(ymin=0,ymax=100*value),alpha=.1,color=NA) +
@@ -102,7 +102,7 @@ plot.Re = function(out.grid,facet=NULL,clr=NULL,...){
 
 plot.deg = function(out.grid,facet=NULL,clr=NULL,...){
   f = formula.fun('value','strat',facet,clr,...)
-  out.grid.Re = aggregate(f,row.select(out.grid,var='deg.inf',gen=1:thr$gen.max),mean)
+  out.grid.Re = aggregate(f,row.select(out.grid,var='deg.inf'),mean)
   g = ggplot(out.grid.Re,aes(y=100*value,x=strat,!!!ensyms(color=clr,fill=clr,...))) +
     facet_grid(facet) +
     geom_ribbon(aes(ymin=0,ymax=100*value),alpha=.1,color=NA) +
@@ -112,7 +112,7 @@ plot.deg = function(out.grid,facet=NULL,clr=NULL,...){
 }
 
 plot.prev = function(out.grid,facet=NULL,clr=NULL,...){
-  out.grid.prev = row.select(out.grid,var='prev',gen=1:thr$gen.max)
+  out.grid.prev = row.select(out.grid,var='prev')
   g = ggplot(out.grid.prev,aes(y=100*value,!!!ensyms(color=clr,fill=clr,...))) +
     facet_grid(facet) +
     geom_violin(alpha=.1) +
@@ -130,8 +130,7 @@ fig.gen = function(){
   thr.arg.save('gen',args)
 }
 
-fig.ve = function(){
-  args = thr$base
+fig.ve.fg = function(){
   args = list.update(thr$base,vax.eff=c(.5,.6,.7,.8,.9))
   out.grid = thr.out.grid(args)
   out.grid = as.factor.cols(out.grid,c('gen','vax.eff'))
@@ -139,19 +138,27 @@ fig.ve = function(){
   thr.arg.save('ve',args)
 }
 
-fig.exp = function(){
-  args = thr$base
+fig.e2.fg = function(){
   args = list.update(thr$base,exp.deg.I0=c(0,1),exp.deg.vax=c(0,1))
   out.grid = thr.out.grid(args)
   out.grid = as.factor.cols(out.grid,c('gen','exp.deg.I0','exp.deg.vax'))
-  plot.Re  (out.grid,facet='gen',clr='exp.deg.I0',lty='exp.deg.vax'); thr.fig.save('exp.Re',w=4,h=8)
-  plot.deg (out.grid,facet='gen',clr='exp.deg.I0');                   thr.fig.save('exp.deg',w=4,h=8)
-  plot.prev(out.grid,facet='gen',clr='exp.deg.I0',x='exp.deg.I0');    thr.fig.save('exp.prev',w=4,h=8)
+  plot.Re  (out.grid,facet='gen',clr='exp.deg.I0',lty='exp.deg.vax'); thr.fig.save('e2.fg.Re',w=4,h=8)
+  plot.deg (out.grid,facet='gen',clr='exp.deg.I0');                   thr.fig.save('e2.fg.deg',w=4,h=8)
+  plot.prev(out.grid,facet='gen',clr='exp.deg.I0',x='exp.deg.I0');    thr.fig.save('e2.fg.prev',w=4,h=8)
   thr.arg.save('exp',args)
 }
 
-fig.gen()
-# fig.ve()
-fig.exp()
+fig.e2.fi = function(){
+  args = list.update(thr$base,gen.max=1,N.I0=c(1,3,10,30,100),exp.deg.I0=c(0,1),exp.deg.vax=c(0,1))
+  out.grid = thr.out.grid(args)
+  out.grid = as.factor.cols(out.grid,c('N.I0','exp.deg.I0','exp.deg.vax'))
+  plot.Re  (out.grid,facet='N.I0',clr='exp.deg.I0',lty='exp.deg.vax'); thr.fig.save('e2.fi.Re',w=4,h=8)
+  plot.deg (out.grid,facet='N.I0',clr='exp.deg.I0');                   thr.fig.save('e2.fi.deg',w=4,h=8)
+  plot.prev(out.grid,facet='N.I0',clr='exp.deg.I0',x='exp.deg.I0');    thr.fig.save('e2.fi.prev',w=4,h=8)
+  thr.arg.save('i0e',args)
+}
 
-# args = list.update(thr$base,N.I0=c(3,30,300))
+fig.gen()
+fig.ve.fg()
+fig.e2.fg()
+fig.e2.fi()
