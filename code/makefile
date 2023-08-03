@@ -4,8 +4,8 @@ do.main:
 	Rscript model/main.r && echo [OK]
 do.handfit:
 	Rscript model/handfit.r && echo [OK]
-do.vt0:
-	Rscript model/do/vt0/main.r && echo [OK]
+do.thr:
+	Rscript model/do/thr/main.r && echo [OK]
 do.gif:
 	Rscript graph/test/layout.gif.r && echo [OK]
 do.benchmark:
