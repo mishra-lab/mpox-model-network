@@ -33,6 +33,19 @@ rename.cols = function(x,...){
   return(x)
 }
 
+as.factor.cols = function(x,names){
+  # e.g. convert names columns in x to factors
+  for (name in names){
+    x[[name]] = as.factor(x[[name]])
+  }
+  return(x)
+}
+
+rbind.lapply = function(...,.par=FALSE){
+  # convenience wrapper as shown below
+  do.call(rbind,par.lapply(...,.par=.par))
+}
+
 dn.array = function(dn,x=NA){
   # easily construct array from dimnames
   A = array(x,dim=sapply(dn,len),dimnames=dn)

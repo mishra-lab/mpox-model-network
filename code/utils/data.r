@@ -116,6 +116,20 @@ split.col = function(x,col,new.names,del=TRUE){
   return(x)
 }
 
+formula.fun = function(y,...){
+  # construct a formula from a list of variables
+  # e.g. formula fun('a','b','c') -> 'a ~ b + c'
+  formula(paste(y,'~',paste(unique(c(...)),collapse=' + ')))
+}
+
+list.str = function(x){
+  # convert a list to strings (characters)
+  # e.g. list.str(list(a=1,b=2)) -> c('a = 1','b = 2')
+  sapply(names(x),function(name){
+    paste(name,'=',paste(x[[name]],collapse=','))
+  })
+}
+
 r.fun = function(fun,...,shift=0,rmin=NULL,rmax=NULL){
   # pre-specify some arguments to random number generating fun
   # e.g. f = partial(runif,min=1,max=2); f(n=10) -> runif(n=10,min=1,max=2)
