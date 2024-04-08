@@ -32,9 +32,9 @@ epi.state.init = function(P){
   S0 = P$G$i # node indices "i"
   I0 = sample(S0,P$N.I0,p=P$G$deg.i[S0]^P$exp.deg.I0)
   S0 = setdiff(S0,I0)
-  V10 = sample(S0,min(P$N.V0[1],len(S0)))
+  V10 = sample(S0,min(P$N.V0[1],len(S0)),p=P$G$deg.i[S0]^P$exp.deg.V0)
   S0 = setdiff(S0,V10)
-  V20 = sample(S0,min(P$N.V0[2],len(S0)))
+  V20 = sample(S0,min(P$N.V0[2],len(S0)),p=P$G$deg.i[S0]^P$exp.deg.V0)
   S0 = setdiff(S0,V20)
   X = list()        # state = indices & durations
   X$i = list()      # list of indices in each state
