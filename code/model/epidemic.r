@@ -1,10 +1,6 @@
 library('reshape2')
 
-epi.t = function(t0=1,tf=180){
-  t.vec = seq(t0,tf)
-}
-
-epi.random.init = function(P,t.vec){
+epi.random.init = function(P){
   # R is a list of pre-computed random numbers
   # which allow the exact same events to occur among every individual,
   # unless they are affected by vaccination or other intervention.
@@ -14,8 +10,11 @@ epi.random.init = function(P,t.vec){
   # possibly resulting in "negative intervention impact" due to this extra randomness
   .Random.seed <<- P$seed.state # resume state we left off after def.params
   R = list()
-  f.sex.e = P$G$attr$e$sex / P$G$attr$g$dur # sex frequency per partnership (per day)
-  R$e.sex.t = lapply(t.vec,function(tj){ which(runif(P$G$N.e) < f.sex.e) }) # partnerships having sex each day
+  b = logical(P$dur.net) # helper
+  b.sex.e = mapply(function(t0,tf,sex){ b[sample(t0:tf,sex)] = TRUE; b },
+    P$G$attr$e$t0, P$G$attr$e$tf, P$G$attr$e$sex)
+  # plot(rowSums(b.sex.e)) # TODO: sexual activity changes over time
+  R$e.sex.t = apply(b.sex.e,1,which) # partnerships having sex each day
   R$r.sex.t = lapply(R$e.sex.t,runif) # random number per sex-day (used to decide transmission)
   R$b.asymp.i = runif(P$N) < P$p.asymp # random people who are asymptomatic
   R$dur.EI.i = P$dur.EI.rfun(P$N) # random dur per-person: from exposure to symptom onset (incubation)
@@ -76,12 +75,12 @@ epi.ii.transmit = function(P,R,tj,X){
   ii.IE.j = ii.IE.j[!duplicated(ii.IE.j[,2]),,drop=FALSE] # remove double infections
 }
 
-epi.run = function(P,t.vec){
+epi.run = function(P){
   # run the epidemic
-  R = epi.random.init(P,t.vec) # pre-compute all (most) random values
+  R = epi.random.init(P) # pre-compute all (most) random values
   X = epi.state.init(P) # indices of all health states, and durations of some of those
   out.t = epi.out.init(P,X) # initialize the output stuff
-  for (tj in t.vec){
+  for (tj in P$t.vec){
     # computing transitions
     ii.IE.j = epi.ii.transmit(P,R,tj,X)             # I{S,V1,V2} -> IE
     b.EI.j = X$dur$E  > R$dur.EI.i[X$i$E]           # E -> I (end incubation)
@@ -120,24 +119,24 @@ epi.run = function(P,t.vec){
     }
   }
   out.t$Xi[['tf']] = X$i
-  return(epi.results(P,t.vec,out.t))
+  return(epi.results(P,out.t))
 }
 
-epi.run.s = function(P.s,t.vec,.par=TRUE){
+epi.run.s = function(P.s,.par=TRUE){
   # run for multiple seeds, usually in parallel
-  E.s = par.lapply(P.s,function(P){ E = epi.run(P,t.vec) },.par=.par)
+  E.s = par.lapply(P.s,function(P){ E = epi.run(P) },.par=.par)
 }
 
-epi.results = function(P,t.vec,out.t){
+epi.results = function(P,out.t){
   # collect some results (renamed "R" -> "E")
   E = list()
   P$G = epi.net.attrs(P$G,out.t)
   E$P = P
-  E$out = epi.output(P,t.vec,out.t)
-  E$tree = epi.tree(P,t.vec,out.t)
+  E$out = epi.output(P,out.t)
+  E$tree = epi.tree(P,out.t)
   if (.debug){
-    E$A = dn.array(list('t'=t.vec,'i'=seqn(P$N)),character())
-    for (tj in t.vec){ Xij = out.t$Xi[[tj]]; for (h in names(Xij)){ E$A[tj,Xij[[h]]] = h } }
+    E$A = dn.array(list('t'=P$t.vec,'i'=seqn(P$N)),character())
+    for (tj in P$t.vec){ Xij = out.t$Xi[[tj]]; for (h in names(Xij)){ E$A[tj,Xij[[h]]] = h } }
   }
   return(E)
 }
@@ -150,9 +149,9 @@ epi.net.attrs = function(G,out.t){
   return(G)
 }
 
-epi.tree = function(P,t.vec,out.t){
+epi.tree = function(P,out.t){
   # clean up tree & compute a few properties
-  tree = do.call(rbind,lapply(t.vec,function(tj){
+  tree = do.call(rbind,lapply(P$t.vec,function(tj){
     ii.IE.j = out.t$ii.IE[[tj]]
     cbind('par'=ii.IE.j[,1],'chi'=ii.IE.j[,2],'t'=rep(tj,nrow(ii.IE.j))) # parent (I), child (E), time (t)
   }))
@@ -173,7 +172,7 @@ epi.tree = function(P,t.vec,out.t){
   return(tree)
 }
 
-epi.output = function(P,t.vec,out.t){
+epi.output = function(P,out.t){
   # clean-up outputs + compute a few extra
   N       = as.data.frame(do.call(rbind,out.t$N)) # num people in each health state, each day
   N$all   = P$N
@@ -181,7 +180,7 @@ epi.output = function(P,t.vec,out.t){
   inc$all = rowSums(inc) # total incidence
   prev    = N / P$N # prevalence
   out  = cbind( # join these data column-wise
-    't' = t.vec,
+    't' = P$t.vec,
     setNames(N,   paste0('N.',   names(N))),
     setNames(prev,paste0('prev.',names(prev))),
     setNames(inc, paste0('inc.', names(inc))))
