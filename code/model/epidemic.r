@@ -10,11 +10,13 @@ epi.random.init = function(P){
   # possibly resulting in "negative intervention impact" due to this extra randomness
   .Random.seed <<- P$seed.state # resume state we left off after def.params
   R = list()
-  b = logical(P$dur.net) # helper
-  b.sex.e = mapply(function(t0,tf,sex){ b[sample(t0:tf,sex)] = TRUE; b },
-    P$G$attr$e$t0, P$G$attr$e$tf, P$G$attr$e$sex)
-  # plot(rowSums(b.sex.e)) # TODO: sexual activity changes over time
-  R$e.sex.t = apply(b.sex.e,1,which) # partnerships having sex each day
+  R$e.sex.t = lapply(P$t.vec,function(t){ e = which( # partnerships having sex each day
+    (t == P$G$attr$e$t0) | ( # first day of partnership or
+      (t > P$G$attr$e$t0) &
+      (t < P$G$attr$e$tf) &
+      (runif(P$G$N.e) < P$f.sex) ) # random chance during partnership
+  )})
+  # plot(sapply(R$e.sex.t,len)/P$N) # DEBUG: mean sex per person-day
   R$r.sex.t = lapply(R$e.sex.t,runif) # random number per sex-day (used to decide transmission)
   R$b.asymp.i = runif(P$N) < P$p.asymp # random people who are asymptomatic
   R$dur.EI.i = P$dur.EI.rfun(P$N) # random dur per-person: from exposure to symptom onset (incubation)
