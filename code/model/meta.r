@@ -32,3 +32,7 @@ M$inf.src$fill = M$inf.src$color
 M$inf.src$shape = c(
   'loc' = 21,
   'imp' = 23)
+M$active = list()
+M$active$title = 'Active'
+M$active$label = c('No','Yes')
+M$active$linetype = c(0,1)

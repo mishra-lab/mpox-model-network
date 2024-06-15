@@ -122,6 +122,7 @@ edges.sort.order = function(ii.e){
 tree.recurse = function(ii,root=0,gen=0,pos=NULL){
   # assuming ii represents a tree, walk the tree (in given ordder) & return matrix with columns:
   # index (ordered by tree search), generation, position, n direct children, n total children
+  # TODO: this can be much faster without using c()
   if (is.null(pos)){ pos = 'child.range' }
   if (gen==0){ .tree.tips <<- 0 }
   b.root = ii[,1]==root
@@ -205,7 +206,7 @@ plot.graph = function(G,i.aes=list(),e.aes=list()){
   if (is.null(G$attr$g$layout)){ G$attr$g$layout = graph.layout.fr(G) }
   # defaults
   i.aes = list.update(list(size=25/G$N.i^.4,shape=21),xu=i.aes)
-  e.aes = list.update(list(curvature=0,alpha=.1),xu=e.aes)
+  e.aes = list.update(list(curvature=0,alpha='dur'),xu=e.aes)
   # required data
   i.data = setNames(data.frame(G$attr$g$layout),c('X','Y'))
   e.data = data.frame(
@@ -223,7 +224,7 @@ plot.graph = function(G,i.aes=list(),e.aes=list()){
       map=kw.call(aes_string,e.aes[b.e],x='X1',y='Y1',xend='X2',yend='Y2')) +
     kw.call(geom_point,data=i.data,i.aes[!b.i],
       kw.call(aes_string,i.aes[b.i])) +
-    guides(fill=guide_legend(override.aes=list(shape=21))) +
+    # guides(fill=guide_legend(override.aes=list(shape=21))) + # TODO: bug?
     coord_equal() +
     theme_void()
 }

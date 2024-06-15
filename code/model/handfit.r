@@ -8,7 +8,6 @@ source('model/epidemic.r')
 source('model/plot.r')
 
 .debug = TRUE
-t.vec = epi.t(tf=180)
 
 fname = function(slug){
   # e.g. .../code/.tmp/handfit/2022-01-01/{slug}
@@ -18,7 +17,7 @@ fname = function(slug){
 handfit.run = function(seed=0,...){
   # run the model once
   P = def.params(seed=seed,...)
-  E = epi.run(P,t.vec)
+  E = epi.run(P)
 }
 
 handfit.plot.durs = function(P){
@@ -37,7 +36,7 @@ handfit.plot.durs = function(P){
 handfit.plot.epidemic = function(E){
   # main standard plots for one run
   # TODO: maybe add multiple model runs by default
-  g = plot.epidemic(epi.output.melt(E$out,E$P)) +
+  g = plot.epidemic(epi.output.melt(E$out,E$P),select=list(health=c('E','I','H'))) +
     labs(y='Individuals')
     fig.save(fname('epidemic'),w=8,h=4)
   g = plot.epidemic(epi.output.melt(E$out,E$P),select=list(var='inc')) +
@@ -88,19 +87,22 @@ handfit.plot.tree = function(E){
     fig.save(fname('tree-n-child'),g=g,w=8,h=6)
 }
 
-handfit.network.gif = function(seed=0,N=100,tf=100,fps=10){
+handfit.network.gif = function(seed=0,N=100,tf=100,fps=5){
   # make a gif from plot.network, showing health states over time
   library('gganimate')
     # define params & run model
   P = def.params(seed=seed,N=N,N.I0=5)
-  t.vec = epi.t(tf=tf)
-  E = epi.run(P,t.vec)
+  E = epi.run(P)
+  t.vec = P$t.vec[1:tf]
   # hijack attr: write too many values that will be recycled by plot.network
+  act.e = outer(t.vec,P$G$attr$e$t0,`>=`) & outer(t.vec,P$G$attr$e$tf,`<`)
   P$G$attr$i$t = rep(t.vec,each=P$G$N.i)
   P$G$attr$e$t = rep(t.vec,each=P$G$N.e)
+  P$G$attr$e$active = factor(c(t(act.e)))
   P$G$attr$i$health = c(t(E$A[1:tf,]))
   # build & save gif
-  g = plot.network(P$G,list(fill='health')) + labs(title='Day {frame_time}') +
+  g = plot.network(P$G,list(fill='health'),list(linetype='active',alpha=1)) +
+    labs(title='Day {frame_time}') +
     transition_time(t) +
     ease_aes('linear')
   f = fname(sprintf('gif-n%d-s%d-t%d.gif',N,seed,tf)) # filename
@@ -113,7 +115,7 @@ if (sys.nframe() == 0){
   handfit.plot.durs(E$P)
   handfit.plot.doubling(E)
   handfit.plot.epidemic(E)
-  handfit.plot.G.distrs(E)
+  # handfit.plot.G.distrs(E) # TODO
   handfit.plot.tree(E)
-  par.lapply(c(100,300),handfit.network.gif,seed=0,tf=100)
+  handfit.network.gif()
 }
