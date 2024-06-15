@@ -12,7 +12,7 @@ def.params = function(seed=NULL,N=1000,...){
   P$dur.IH.rfun    = r.fun(rgamma,shape=1.23,scale=4.05,rmin=2,rmax=20) # non-isolated period
   P$dur.IH.scale   = 1 # relative duration of non-isolated period
   P$p.asymp        = .15 # proportion of cases asymptomatic (never isolate)
-  P$beta           = .90 # probability of transmission (per contact)
+  P$beta           = .67 # probability of transmission (per contact)
   P$vax.eff.dose   = c(.85,.88) # vaccine effectiveness by dose
   P$N.V0           = c(.00,.00) * P$N # total number initially vaccinated by dose
   P$exp.deg.V0     = 0 # degree-exponent weight for initially vaccinated
