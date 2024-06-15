@@ -81,12 +81,11 @@ make.net = function(P){
   }))
   # collect all partnerships
   ii.e = rbind(ii.excl, ii.misc)
-  deg.i = tabulate(ii.e,P$N)
   # attributes
   g.attr = list()
   g.attr$dur = P$net.dur
   i.attr = list()
-  i.attr$deg = deg.i
+  i.attr$deg = tabulate(ii.e,P$N)
   e.attr = list()
   e.attr$t0  = c(tt.excl[,1],tt.misc[,1])
   e.attr$tf  = c(tt.excl[,2],tt.misc[,2])
@@ -94,10 +93,10 @@ make.net = function(P){
   if (.debug){ # expensive / not required
     # i.attr$stat = f.stat.i # TODO
     e.attr$type = factor(rep(names(P$N.e.type),P$N.e.type))
-    # hist(deg.i,max(deg.i)) # DEBUG
+    # hist(i.attr$deg,max(i.attr$deg)) # DEBUG
   }
   # graph object
-  G = graph.obj(ii.e=ii.e,i=i,deg.i=deg.i,g.attr=g.attr,i.attr=i.attr,e.attr=e.attr)
+  G = graph.obj(ii.e=ii.e,i=i,g.attr=g.attr,i.attr=i.attr,e.attr=e.attr)
   # TODO: this results in .Random.seed depends on .debug: maybe move this after .Random.seed saved
   if (.debug & G$N.i < 1000){ G$attr$g$layout = graph.layout.fr(G) } # pre-compute consistent layout
   return(G)

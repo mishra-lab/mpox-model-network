@@ -38,11 +38,11 @@ epi.state.init = function(P){
   # values in X$dur are matched (same order) as corresponding indices in X$i
   # e.g. we couldd have X$dur$I = c(5) for above, if person i=3 became infectious 5 days ago
   S0 = P$G$i # node indices "i"
-  I0 = sample(S0,P$N.I0,p=P$G$deg.i[S0]^P$exp.deg.I0)
+  I0 = sample(S0,P$N.I0,p=P$G$attr$i$deg[S0]^P$exp.deg.I0)
   S0 = setdiff(S0,I0)
-  V10 = sample(S0,min(P$N.V0[1],len(S0)),p=P$G$deg.i[S0]^P$exp.deg.V0)
+  V10 = sample(S0,min(P$N.V0[1],len(S0)),p=P$G$attr$i$deg[S0]^P$exp.deg.V0)
   S0 = setdiff(S0,V10)
-  V20 = sample(S0,min(P$N.V0[2],len(S0)),p=P$G$deg.i[S0]^P$exp.deg.V0)
+  V20 = sample(S0,min(P$N.V0[2],len(S0)),p=P$G$attr$i$deg[S0]^P$exp.deg.V0)
   S0 = setdiff(S0,V20)
   X = list()        # state = indices & durations
   X$i = list()      # list of indices in each state

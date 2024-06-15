@@ -8,7 +8,6 @@ source('utils/all.r')
 # i: indices of nodes (people) in the graph
 # e: indices of edges (contacts) in the graph
 # N.{y}: total number of index {y}
-# deg.i: degree of node i
 # ii.e: edge list (matrix with ncol=2) with rows like [a,b] for edge a--b
 # r.e: number of times edge e is repeated
 # k.e: index of edge e among the repeats (1,2,...,r.e)
@@ -18,16 +17,14 @@ source('utils/all.r')
 # ==================================================================================================
 # pseudo-class
 
-graph.obj = function(ii.e,i=NULL,deg.i=NULL,g.attr=NULL,i.attr=NULL,e.attr=NULL){
+graph.obj = function(ii.e,i=NULL,g.attr=NULL,i.attr=NULL,e.attr=NULL){
   if (is.null(i)){ i = sort(unique(c(ii.e))) }
-  if (is.null(deg.i)){ deg.i = degrees.from.edges(i,ii.e) }
   G = list()
   G$N.i = len(i)
   G$N.e = nrow(ii.e)
   G$i = i
   G$e = seqn(G$N.e)
   G$ii.e = ii.e
-  G$deg.i = deg.i
   G$attr = list()
   G$attr$g = g.attr
   G$attr$i = i.attr
@@ -235,7 +232,7 @@ plot.graph = function(G,i.aes=list(),e.aes=list()){
 # casting to igraph if needed
 
 .igraph = function(G){
-  i.deg.0 = which(G$deg.i==0)
+  i.deg.0 = which(degrees.from.edges(G$i,G$ii.e)==0)
   if (len(i.deg.0) == 0){
     iG = igraph::graph_from_edgelist(G$ii.e,dir=FALSE)
   } else {
