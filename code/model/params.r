@@ -91,7 +91,9 @@ make.net = function(P){
   e.attr$tf  = c(tt.excl[,2],tt.misc[,2])
   e.attr$dur = e.attr$tf - e.attr$t0
   if (.debug){ # expensive / not required
-    # i.attr$stat = f.stat.i # TODO
+    ii.open = ii.misc[1:P$N.e.type[2],]
+    i.attr$stat = as.factor(ifelse(i %in% ii.excl,'excl',
+                            ifelse(i %in% ii.open,'open','noma')))
     e.attr$type = factor(rep(names(P$N.e.type),P$N.e.type))
     # hist(i.attr$deg,max(i.attr$deg)) # DEBUG
   }
