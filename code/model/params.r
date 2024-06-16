@@ -53,9 +53,20 @@ def.params.net = function(P){
   return(P)
 }
 
-tt.fun = function(dur){
-  t0 = round(runif(len(dur),-dur,180))
+sample.tt = function(dur){
+  # sample t0,tf given dur which guarantees all partnerships
+  # will overlap with [1,180], i.e. t0 <= 180 or tf >= 1
+  t0 = round(runif(len(dur),1-dur,180))
   tt = cbind(t0=t0,tf=t0+round(dur))
+}
+
+assign.misc = function(tt.excl,tt.misc,ii.excl,i.misc,w.i){
+  # assign misc pairs among i.excl & i.misc
+  b.comp  = outer(tt.excl[,2],tt.misc[,1],`<`) | outer(tt.excl[,1],tt.misc[,2],`>`)
+  ii.misc = t(sapply(1:nrow(tt.misc),function(e){ # for each misc partnership
+    i = c(ii.excl[b.comp[,e],],i.misc) # available individuals
+    sample(i,2,prob=w.i[i]) # sample individuals with weights
+  }))
 }
 
 make.net = function(P){
@@ -64,36 +75,33 @@ make.net = function(P){
   w.i = P$wt.rfun(P$N)  # weight of forming a given partnership
   N.e = sum(P$N.e.type) # total partnerships
   # sample t0 & tf for all partnerships
-  tt.excl = tt.fun(P$dur.main.rfun(P$N.e.type[1])) # excl
-  tt.misc = rbind( # misc = open, casu, once
-    tt.fun(P$dur.main.rfun(P$N.e.type[2])), # open
-    tt.fun(P$dur.casu.rfun(P$N.e.type[3])), # casu
-    tt.fun(P$dur.once.rfun(P$N.e.type[4]))) # once
+  tt.excl = sample.tt(P$dur.main.rfun(P$N.e.type[1]))
+  tt.open = sample.tt(P$dur.main.rfun(P$N.e.type[2]))
+  tt.casu = sample.tt(P$dur.casu.rfun(P$N.e.type[3]))
+  tt.once = sample.tt(P$dur.once.rfun(P$N.e.type[4]))
   # assign excl
-  i.excl  = sample(i,P$N.e.type[1]*2) # inds with 1 excl
-  i.noex  = i[-i.excl]                # inds with no excl
-  ii.excl = matrix(i.excl,ncol=2)     # excl pairs
-  # assign misc pairs for compatible inds
-  b.comp  = outer(tt.excl[,2],tt.misc[,1],`<`) | outer(tt.excl[,1],tt.misc[,2],`>`)
-  ii.misc = t(sapply(1:nrow(tt.misc),function(e){ # for each misc partnership
-    i = c(ii.excl[b.comp[,e],],i.noex) # available individuals
-    sample(i,2,prob=w.i[i]) # sample individuals with weights
-  }))
+  i.excl = sample(i,P$N.e.type[1]*2)      # inds with 1 excl-main
+  i.noex = i[-c(i.excl)]                  # inds with no excl-main
+  i.open = sample(i.noex,P$N.e.type[2]*2) # inds with 1 open-main
+  i.noma = i[-c(i.excl,i.open)]           # inds with no main
+  ii.excl = matrix(i.excl,ncol=2) # excl pairs
+  ii.open = matrix(i.open,ncol=2) # open pairs
+  ii.casu = assign.misc(tt.excl,tt.casu,ii.excl,i.noex,w.i) # casu pairs
+  ii.once = assign.misc(tt.excl,tt.once,ii.excl,i.noex,w.i) # once pairs
   # collect all partnerships
-  ii.e = rbind(ii.excl, ii.misc)
+  ii.e = rbind(ii.excl, ii.open, ii.casu, ii.once)
   # attributes
   g.attr = list()
   g.attr$dur = P$net.dur
   i.attr = list()
   i.attr$deg = tabulate(ii.e,P$N)
   e.attr = list()
-  e.attr$t0  = c(tt.excl[,1],tt.misc[,1])
-  e.attr$tf  = c(tt.excl[,2],tt.misc[,2])
+  e.attr$t0  = c(tt.excl[,1],tt.open[,1],tt.casu[,1],tt.once[,1])
+  e.attr$tf  = c(tt.excl[,2],tt.open[,2],tt.casu[,2],tt.once[,2])
   e.attr$dur = e.attr$tf - e.attr$t0
   if (.debug){ # expensive / not required
-    ii.open = ii.misc[1:P$N.e.type[2],]
-    i.attr$stat = as.factor(ifelse(i %in% ii.excl,'excl',
-                            ifelse(i %in% ii.open,'open','noma')))
+    i.attr$stat = as.factor(ifelse(i %in% i.excl,'excl',
+                            ifelse(i %in% i.open,'open','noma')))
     e.attr$type = factor(rep(names(P$N.e.type),P$N.e.type))
     # hist(i.attr$deg,max(i.attr$deg)) # DEBUG
   }
