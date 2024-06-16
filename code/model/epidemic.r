@@ -170,11 +170,11 @@ epi.tree = function(P,out.t){
     tree.data = tree.recurse(tree[,c('par','chi')],root=0)
     tree = as.data.frame(tree)
     tree = rbind(c(-1,0,NA),tree) # another dummy node (fixes matching)
-    tree = tree[match(tree.data[1,],tree$chi),] # re-order to match tree.data
-    tree$gen = tree.data[2,] # generation
-    tree$pos = (tree.data[3,]-1) / (max(tree.data[3,])-1) # position, rescaled to range [0,1]
-    tree$n.chi.dir = tree.data[4,] # number of direct children
-    tree$n.chi.tot = tree.data[5,] # number of total direct + indirect children
+    tree = tree[match(tree.data[,'root'],tree$chi),] # re-order to match tree.data
+    tree$gen = tree.data[,'gen'] # generation
+    tree$pos = (tree.data[,'pos']-1) / (max(tree.data[,'pos'])-1) # position, rescaled to range [0,1]
+    tree$n.chi.dir = tree.data[,'chi.dir'] # number of direct children
+    tree$n.chi.tot = tree.data[,'chi.tot'] # number of total direct + indirect children
     tree$dt = tree$t - tree$t[match(tree$par,tree$chi)] # generation time
     tree = tree[2:nrow(tree),] # remove dummy node
   }

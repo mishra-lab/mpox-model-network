@@ -119,27 +119,23 @@ edges.sort.order = function(ii.e){
 # tree stuff
 
 .tree.tips <<- NULL
-tree.recurse = function(ii,root=0,gen=0,pos=NULL){
+tree.recurse = function(ii,root=0,gen=0){
   # assuming ii represents a tree, walk the tree (in given ordder) & return matrix with columns:
   # index (ordered by tree search), generation, position, n direct children, n total children
-  # TODO: this can be much faster without using c()
-  if (is.null(pos)){ pos = 'child.range' }
   if (gen==0){ .tree.tips <<- 0 }
   b.root = ii[,1]==root
   i.childs = ii[b.root,2]
   if (any(b.root)){
-    mat.childs = matrix(nrow=5,unlist(lapply(i.childs,function(i.child){
-      tree.recurse(ii=ii[!b.root,,drop=FALSE],root=i.child,gen=gen+1,pos=pos)
-    })))
-    root.pos = switch(pos,
-      'tip.mean' = mean(mat.childs[3,]),
-      'tip.range' = mean(range(mat.childs[3,])),
-      'child.mean' = mean(mat.childs[3,mat.childs[1,] %in% i.childs]),
-      'child.range' = mean(range(mat.childs[3,mat.childs[1,] %in% i.childs])))
-    mat.root.childs = matrix(nrow=5,c(root,gen,root.pos,sum(b.root),ncol(mat.childs),mat.childs))
+    mat.childs = do.call(rbind,lapply(i.childs,function(i.child){
+      tree.recurse(ii=ii[!b.root,,drop=FALSE],root=i.child,gen=gen+1)
+    }))
+    root.pos = mean(range(mat.childs[mat.childs[,'root'] %in% i.childs,'pos']))
+    mat.root.childs = rbind(
+      cbind(root=root,gen=gen,pos=root.pos,chi.dir=sum(b.root),chi.tot=nrow(mat.childs)),
+      mat.childs)
   } else {
     .tree.tips <<- .tree.tips + 1
-    mat.root = matrix(nrow=5,c(root,gen,.tree.tips,0,0))
+    mat.root = cbind(root=root,gen=gen,pos=.tree.tips,chi.dir=0,chi.tot=0)
   }
 }
 
