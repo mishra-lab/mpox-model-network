@@ -60,12 +60,12 @@ sample.tt = function(dur){
   tt = cbind(t0=t0,tf=t0+round(dur))
 }
 
-assign.misc = function(tt.excl,tt.misc,ii.excl,i.misc,w.i){
+assign.ii = function(tt.excl,tt.misc,ii.excl,i,w.i){
   # assign misc pairs among i.excl & i.misc
-  b.comp  = outer(tt.excl[,2],tt.misc[,1],`<`) | outer(tt.excl[,1],tt.misc[,2],`>`)
-  ii.misc = t(sapply(1:nrow(tt.misc),function(e){ # for each misc partnership
-    i = c(ii.excl[b.comp[,e],],i.misc) # available individuals
-    sample(i,2,prob=w.i[i]) # sample individuals with weights
+  b.fail = outer(tt.excl[,2],tt.misc[,1],`>=`) & outer(tt.excl[,1],tt.misc[,2],`<=`)
+  ii.misc = t(sapply(1:nrow(tt.misc),function(e){
+    w.i[ii.excl[b.fail[,e],]] = 0
+    wrswoR::sample_int_crank(len(i),2,w.i)
   }))
 }
 
@@ -80,14 +80,12 @@ make.net = function(P){
   tt.casu = sample.tt(P$dur.casu.rfun(P$N.e.type[3]))
   tt.once = sample.tt(P$dur.once.rfun(P$N.e.type[4]))
   # assign excl
-  i.excl = sample(i,P$N.e.type[1]*2)      # inds with 1 excl-main
-  i.noex = i[-c(i.excl)]                  # inds with no excl-main
-  i.open = sample(i.noex,P$N.e.type[2]*2) # inds with 1 open-main
-  i.noma = i[-c(i.excl,i.open)]           # inds with no main
+  i.excl = sample(i,P$N.e.type[1]*2)             # inds with 1 excl-main
+  i.open = sample(i[-c(i.excl)],P$N.e.type[2]*2) # inds with 1 open-main
   ii.excl = matrix(i.excl,ncol=2) # excl pairs
   ii.open = matrix(i.open,ncol=2) # open pairs
-  ii.casu = assign.misc(tt.excl,tt.casu,ii.excl,i.noex,w.i) # casu pairs
-  ii.once = assign.misc(tt.excl,tt.once,ii.excl,i.noex,w.i) # once pairs
+  ii.casu = assign.ii(tt.excl,tt.casu,ii.excl,i,w.i) # casu pairs
+  ii.once = assign.ii(tt.excl,tt.once,ii.excl,i,w.i) # once pairs
   # collect all partnerships
   ii.e = rbind(ii.excl, ii.open, ii.casu, ii.once)
   # attributes
@@ -100,8 +98,8 @@ make.net = function(P){
   e.attr$tf  = c(tt.excl[,2],tt.open[,2],tt.casu[,2],tt.once[,2])
   e.attr$dur = e.attr$tf - e.attr$t0
   if (.debug){ # expensive / not required
-    i.attr$stat = as.factor(ifelse(i %in% i.excl,'excl',
-                            ifelse(i %in% i.open,'open','noma')))
+    i.attr$stat = as.factor(ifelse(i %in% ii.excl,'excl',
+                            ifelse(i %in% ii.open,'open','noma')))
     e.attr$type = factor(rep(names(P$N.e.type),P$N.e.type))
     # hist(i.attr$deg,max(i.attr$deg)) # DEBUG
   }
