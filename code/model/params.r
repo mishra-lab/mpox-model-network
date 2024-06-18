@@ -41,7 +41,7 @@ def.params.net = function(P){
   P$dur.main.rfun = r.fun(rweibull,shape=.521,scale=916,rmin=7,rmax=3650) # TODO
   P$dur.casu.rfun = r.fun(rweibull,shape=.5,  scale= 15,rmin=1,rmax=3650) # TODO
   P$dur.once.rfun = r.fun(rep,x=1)
-  P$wt.rfun  = r.fun(runif)
+  P$w.ptr.rfun  = function(n){ runif(n) }
   P$deg.once = 7   # TODO
   P$deg.casu = 2   # TODO
   P$f.sex    = 1/7 # TODO
@@ -60,34 +60,44 @@ sample.tt = function(dur){
   tt = cbind(t0=t0,tf=t0+round(dur))
 }
 
+e.match = function(ii.excl,ii.misc){
+  # for each i in ii.misc, return the row where i is found in ii.excl, or NA
+  # len(e) = 2*nrow(ii.misc) corresponding to c(ii[,1],ii[,2])
+  e = match(ii.misc,ii.excl) %% nrow(ii.excl)
+  e[e==0] = nrow(ii.excl)
+  return(e)
+}
+
 assign.ii = function(tt.excl,tt.misc,ii.excl,i,w.i){
-  # assign misc pairs among i.excl & i.misc
-  b.fail = outer(tt.excl[,2],tt.misc[,1],`>=`) & outer(tt.excl[,1],tt.misc[,2],`<=`)
-  ii.misc = t(sapply(1:nrow(tt.misc),function(e){
-    w.i[ii.excl[b.fail[,e],]] = 0
-    wrswoR::sample_int_crank(len(i),2,w.i)
-  }))
+  # assign misc pairs (ii) among all i while avoiding overlaps with tt.excl
+  if (nrow(tt.misc)==0){ return(NULL) } # end of recursion
+  ii.misc.try = matrix(sample(i,nrow(tt.misc)*2,rep=TRUE,prob=w.i),ncol=2) # random pairs
+  e = e.match(ii.excl,ii.misc.try) # find rows of ii.misc.try in ii.excl
+  b.ok.ee = matrix(ncol=2, # boolean: which tt.misc are compatible with tt.excl
+    is.na(e) | tt.misc[,2] < tt.excl[e,1] | tt.misc[,1] > tt.excl[e,2])
+  b.ok.e = b.ok.ee[,1] & b.ok.ee[,2] # combine checks for ii[,1] & ii[,2]
+  ii.misc = rbind(ii.misc.try[b.ok.e,], # join pairs: ok + recursive re-attempts
+    assign.ii(tt.excl,tt.misc[!b.ok.e,,drop=FALSE],ii.excl,i,w.i))
 }
 
 make.net = function(P){
   # the sexual network reflects all partnerships for 180 days
   i = seqn(P$N)
-  w.i = P$wt.rfun(P$N)  # weight of forming a given partnership
+  w.i = P$w.ptr.rfun(P$N) # weight for forming non-excl partnerships
   N.e = sum(P$N.e.type) # total partnerships
   # sample t0 & tf for all partnerships
   tt.excl = sample.tt(P$dur.main.rfun(P$N.e.type[1]))
   tt.open = sample.tt(P$dur.main.rfun(P$N.e.type[2]))
   tt.casu = sample.tt(P$dur.casu.rfun(P$N.e.type[3]))
   tt.once = sample.tt(P$dur.once.rfun(P$N.e.type[4]))
-  # assign excl
-  i.excl = sample(i,P$N.e.type[1]*2)             # inds with 1 excl-main
-  i.open = sample(i[-c(i.excl)],P$N.e.type[2]*2) # inds with 1 open-main
+  # assign pairs
+  i.excl = sample(i,P$N.e.type[1]*2,prob=1-w.i) # inds with 1 excl-main
+  i.open = sample(i[-i.excl],P$N.e.type[2]*2)   # inds with 1 open-main
   ii.excl = matrix(i.excl,ncol=2) # excl pairs
   ii.open = matrix(i.open,ncol=2) # open pairs
   ii.casu = assign.ii(tt.excl,tt.casu,ii.excl,i,w.i) # casu pairs
   ii.once = assign.ii(tt.excl,tt.once,ii.excl,i,w.i) # once pairs
-  # collect all partnerships
-  ii.e = rbind(ii.excl, ii.open, ii.casu, ii.once)
+  ii.e = rbind(ii.excl, ii.open, ii.casu, ii.once) # all partnerships
   # attributes
   g.attr = list()
   g.attr$dur = P$net.dur
@@ -98,6 +108,7 @@ make.net = function(P){
   e.attr$tf  = c(tt.excl[,2],tt.open[,2],tt.casu[,2],tt.once[,2])
   e.attr$dur = e.attr$tf - e.attr$t0
   if (.debug){ # expensive / not required
+    i.attr$w.ptr = w.i
     i.attr$stat = as.factor(ifelse(i %in% ii.excl,'excl',
                             ifelse(i %in% ii.open,'open','noma')))
     e.attr$type = factor(rep(names(P$N.e.type),P$N.e.type))
