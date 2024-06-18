@@ -48,10 +48,8 @@ degrees.from.edges = function(i,ii.e){
 }
 
 edges.random = function(i,shuffle=TRUE){
-  N.i = len(i)
-  if (N.i == 0){ return(matrix(nrow=0,ncol=2)) }
-  if (shuffle){ i = sample(i) }
-  ii.e = edges.low.high(cbind(i[1:(N.i/2)],i[(N.i/2+1):N.i]))
+  wrap = ifelse(shuffle,sample,identity)
+  ii.e = edges.low.high(matrix(wrap(i),ncol=2))
 }
 
 edges.group.odds = function(i,g,or.gg,shuffle=TRUE){
