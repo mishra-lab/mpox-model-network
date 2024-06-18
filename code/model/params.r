@@ -71,14 +71,14 @@ e.match = function(ii.excl,ii.misc){
 assign.ii = function(tt.excl,tt.misc,ii.excl,i,w.i){
   # assign misc pairs (ii) among all i while avoiding overlaps with tt.excl
   if (nrow(tt.misc)==0){ return(NULL) } # end of recursion
-  ii.misc.try = matrix(sample(i,nrow(tt.misc)*2,rep=TRUE,prob=w.i),ncol=2) # random pairs
-  e = e.match(ii.excl,ii.misc.try) # find rows of ii.misc.try in ii.excl
-  b.ok.ee = matrix(ncol=2, # boolean: which pairs are valid
-    (ii.misc.try[,1] != ii.misc.try[,2]) & # not self pair
-    (is.na(e) | tt.misc[,2] < tt.excl[e,1] | tt.misc[,1] > tt.excl[e,2])) # no tt overlaps
-  b.ok.e = b.ok.ee[,1] & b.ok.ee[,2] # combine checks for ii[,1] & ii[,2]
-  ii.misc = rbind(ii.misc.try[b.ok.e,], # join pairs: ok + recursive re-attempts
-    assign.ii(tt.excl,tt.misc[!b.ok.e,,drop=FALSE],ii.excl,i,w.i))
+  ii.misc = matrix(sample(i,nrow(tt.misc)*2,rep=TRUE,prob=w.i),ncol=2) # random pairs
+  e = e.match(ii.excl,ii.misc) # find rows of ii.misc in ii.excl
+  b.val.ee = matrix(ncol=2, # boolean: valid pairs for tt.excl vs tt.misc
+    is.na(e) | tt.misc[,2] < tt.excl[e,1] | tt.misc[,1] > tt.excl[e,2])
+  b.val.e = ii.misc[,1] != ii.misc[,2] & b.val.ee[,1] & b.val.ee[,2] # combine for ii[,1] & ii[,2]
+  # recursively re-attempt invalid pairs
+  ii.misc[!b.val.e,] = assign.ii(tt.excl,tt.misc[!b.val.e,,drop=FALSE],ii.excl,i,w.i)
+  return(ii.misc)
 }
 
 make.net = function(P){
