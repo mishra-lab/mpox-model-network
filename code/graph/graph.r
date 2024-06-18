@@ -156,44 +156,36 @@ graph.layout.random = function(G){
   # layout nodes randomly (uniform) within unit circle, no consideration of edges
   r = sqrt(runif(G$N.i))
   t = runif(G$N.i) * 2 * pi
-  pos = matrix(c(r*cos(t),r*sin(t)),ncol=2)
+  xy = matrix(c(r*cos(t),r*sin(t)),ncol=2)
 }
 
-graph.layout.fr = function(G,niter=500,temp.pwr=.5,temp.tau=10,dc.pwr=1,gif.pos=NULL){
+graph.layout.fr = function(G,n.iter=100,gif.xy=NULL){
   # layout nodes using Fruchterman-Reingold algorithm (attract-repulse)
-  temp = G$N.i^temp.pwr # initial speed
-  rtemp = (1-log(2)*temp.tau/niter) # speed decay
-  dc = G$N.i^dc.pwr # controls global spread
-  iie = as.factor(c(G$ii.e)) # pre-compute for speed
-  pos = graph.layout.random(G) # random initial position
-  b.tri = lower.tri(matrix(0,G$N.i,G$N.i),diag=TRUE) # pre-compute
-  tri.0 = function(x){ x[b.tri] = 0; x }
-  for (k in 1:niter){
-    # if (k %% 10 == 0){ G$attr$g$layout = pos; print(plot.graph(G)) } # DEBUG
-    if (is.list(gif.pos)){ gif.pos[[k]] = pos } # DEBUG: gif
-    # distances - TODO: this can blow up, is there a faster/less-mem way?
-    d1 = outer(pos[,1],pos[,1],'-') # dx
-    d2 = outer(pos[,2],pos[,2],'-') # dy
-    dd = d1^2 + d2^2
-    # repulsive forces
-    ddr = (dc - dd * sqrt(dd)) / (dd * dc)
-    d1r = tri.0(d1) * ddr
-    d2r = tri.0(d2) * ddr
-    d1r.sum = rowSums(d1r,na.rm=TRUE) - colSums(d1r,na.rm=TRUE)
-    d2r.sum = rowSums(d2r,na.rm=TRUE) - colSums(d2r,na.rm=TRUE)
-    # attractive forces
-    d1e = d1[G$ii.e]
-    d2e = d2[G$ii.e]
-    dde = dd[G$ii.e]
-    d1e.sum = sapply(split(c(-d1e,d1e)*dde,iie),sum)
-    d2e.sum = sapply(split(c(-d2e,d2e)*dde,iie),sum)
-    # update pos & temp
-    dpos = cbind(d1r.sum + d1e.sum, d2r.sum + d2e.sum)
-    pos = pos + dpos * temp / sqrt(dpos[,1]^2 + dpos[,2]^2)
-    temp = temp * rtemp
+  n.iter = min(n.iter,1000/sqrt(G$N.i)) # cap iter for large N
+  v  = sqrt(G$N.i) # initial speed
+  dv = exp(log(.001)/n.iter) # speed decay
+  xy = graph.layout.random(G) # random initial position
+  # define adjacency matrix
+  A = matrix(0,G$N.i,G$N.i)
+  A[G$ii.e] = sqrt(G$attr$e$dur)
+  A = A + t(A) + 1/G$N.i
+  # loop
+  for (k in 1:n.iter){
+    # if (k %% 5 == 0){ G$attr$g$layout = xy; print(plot.graph(G)) } # DEBUG
+    if (is.list(gif.xy)){ gif.xy[[k]] = xy } # DEBUG: gif
+    # compute forces
+    d = abind::abind(along=3,
+      outer(xy[,1],xy[,1],`-`),
+      outer(xy[,2],xy[,2],`-`))
+    dn = sqrt(d[,,1]^2 + d[,,2]^2) + 1e-16
+    df = einsum::einsum('ijz,ij->jz',d,A*dn-1/dn^2)
+    dfn = sqrt(df[,1]^2 + df[,2]^2)
+    # update xy & speed
+    xy = xy + einsum::einsum('iz,i->iz',df,v/dfn)
+    v = v * dv
   }
-  if (is.list(gif.pos)){ return(gif.pos) } # return gif.pos if using
-  pos = pos - rep(colMeans(pos),each=G$N.i) # return centred
+  if (is.list(gif.xy)){ return(gif.xy) } # return gif.pos if using
+  xy = xy - rep(colMeans(xy),each=G$N.i) # return centred
 }
 
 plot.graph = function(G,i.aes=list(),e.aes=list()){
