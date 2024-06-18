@@ -97,21 +97,27 @@ make.net = function(P){
   ii.open = matrix(i.open,ncol=2) # open pairs
   ii.casu = assign.ii(tt.excl,tt.casu,ii.excl,i,w.i) # casu pairs
   ii.once = assign.ii(tt.excl,tt.once,ii.excl,i,w.i) # once pairs
-  ii.e = rbind(ii.excl, ii.open, ii.casu, ii.once) # all partnerships
+  # collect & unloop all partnerships
+  ii.e = rbind(ii.excl, ii.open, ii.casu, ii.once)
+  e.ok = which(ii.e[,1] != ii.e[,2])
+  ii.e = ii.e[e.ok,]
+  t0.e = c(tt.excl[,1],tt.open[,1],tt.casu[,1],tt.once[,1])[e.ok]
+  tf.e = c(tt.excl[,2],tt.open[,2],tt.casu[,2],tt.once[,2])[e.ok]
+  type.e = factor(rep(names(P$N.e.type),P$N.e.type))[e.ok]
   # attributes
   g.attr = list()
   g.attr$dur = P$net.dur
   i.attr = list()
   i.attr$deg = tabulate(ii.e,P$N)
   e.attr = list()
-  e.attr$t0  = c(tt.excl[,1],tt.open[,1],tt.casu[,1],tt.once[,1])
-  e.attr$tf  = c(tt.excl[,2],tt.open[,2],tt.casu[,2],tt.once[,2])
-  e.attr$dur = e.attr$tf - e.attr$t0
+  e.attr$t0  = t0.e
+  e.attr$tf  = tf.e
+  e.attr$dur = e.attr$t0 - e.attr$tf
   if (.debug){ # expensive / not required
     i.attr$w.ptr = w.i
     i.attr$stat = as.factor(ifelse(i %in% ii.excl,'excl',
                             ifelse(i %in% ii.open,'open','noma')))
-    e.attr$type = factor(rep(names(P$N.e.type),P$N.e.type))
+    e.attr$type = type.e
     # hist(i.attr$deg,max(i.attr$deg)) # DEBUG
   }
   # graph object
