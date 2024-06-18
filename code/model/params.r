@@ -112,7 +112,7 @@ make.net = function(P){
   e.attr = list()
   e.attr$t0  = t0.e
   e.attr$tf  = tf.e
-  e.attr$dur = e.attr$t0 - e.attr$tf
+  e.attr$dur = e.attr$tf - e.attr$t0
   if (.debug){ # expensive / not required
     i.attr$w.ptr = w.i
     i.attr$stat = as.factor(ifelse(i %in% ii.excl,'excl',
