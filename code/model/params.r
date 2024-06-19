@@ -110,8 +110,10 @@ make.net = function(P){
   e.attr$dur = e.attr$tf - e.attr$t0
   if (.debug){ # expensive / not required
     i.attr$w.ptr = w.i
-    i.attr$stat = as.factor(ifelse(i %in% ii.excl,'excl',
-                            ifelse(i %in% ii.open,'open','noma')))
+    i.attr$stat.any = as.factor(ifelse(i %in% ii.excl,'excl',
+                                ifelse(i %in% ii.open,'open','noma')))
+    i.attr$stat.180 = as.factor(ifelse(i %in% ii.excl[tt.excl[,2] >= 180,],'excl',
+                                ifelse(i %in% ii.open[tt.open[,2] >= 180,],'open','noma')))
     e.attr$type = factor(rep(names(P$N.e.type),P$N.e.type))
     # hist(i.attr$deg,max(i.attr$deg)) # DEBUG
   }
