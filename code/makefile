@@ -8,8 +8,8 @@ do.thr:
 	Rscript model/do/thr/main.r && echo [OK]
 do.gif:
 	Rscript graph/test/layout.gif.r && echo [OK]
-do.benchmark:
-	Rscript model/do/benchmark/main.r && echo [OK]
+do.speed:
+	Rscript model/do/speed/main.r && echo [OK]
 do.graph.test:
 	Rscript graph/test/edges.group.odds.r && echo [OK]
 do.tikz:

@@ -8,7 +8,6 @@ source('utils/all.r')
 # i: indices of nodes (people) in the graph
 # e: indices of edges (contacts) in the graph
 # N.{y}: total number of index {y}
-# deg.i: degree of node i
 # ii.e: edge list (matrix with ncol=2) with rows like [a,b] for edge a--b
 # r.e: number of times edge e is repeated
 # k.e: index of edge e among the repeats (1,2,...,r.e)
@@ -18,16 +17,14 @@ source('utils/all.r')
 # ==================================================================================================
 # pseudo-class
 
-graph.obj = function(ii.e,i=NULL,deg.i=NULL,g.attr=NULL,i.attr=NULL,e.attr=NULL){
+graph.obj = function(ii.e,i=NULL,g.attr=NULL,i.attr=NULL,e.attr=NULL){
   if (is.null(i)){ i = sort(unique(c(ii.e))) }
-  if (is.null(deg.i)){ deg.i = degrees.from.edges(i,ii.e) }
   G = list()
   G$N.i = len(i)
   G$N.e = nrow(ii.e)
   G$i = i
   G$e = seqn(G$N.e)
   G$ii.e = ii.e
-  G$deg.i = deg.i
   G$attr = list()
   G$attr$g = g.attr
   G$attr$i = i.attr
@@ -51,10 +48,8 @@ degrees.from.edges = function(i,ii.e){
 }
 
 edges.random = function(i,shuffle=TRUE){
-  N.i = len(i)
-  if (N.i == 0){ return(matrix(nrow=0,ncol=2)) }
-  if (shuffle){ i = sample(i) }
-  ii.e = edges.low.high(cbind(i[1:(N.i/2)],i[(N.i/2+1):N.i]))
+  wrap = ifelse(shuffle,sample,identity)
+  ii.e = edges.low.high(matrix(wrap(i),ncol=2))
 }
 
 edges.group.odds = function(i,g,or.gg,shuffle=TRUE){
@@ -122,26 +117,23 @@ edges.sort.order = function(ii.e){
 # tree stuff
 
 .tree.tips <<- NULL
-tree.recurse = function(ii,root=0,gen=0,pos=NULL){
+tree.recurse = function(ii,root=0,gen=0){
   # assuming ii represents a tree, walk the tree (in given ordder) & return matrix with columns:
   # index (ordered by tree search), generation, position, n direct children, n total children
-  if (is.null(pos)){ pos = 'child.range' }
   if (gen==0){ .tree.tips <<- 0 }
   b.root = ii[,1]==root
   i.childs = ii[b.root,2]
   if (any(b.root)){
-    mat.childs = matrix(nrow=5,unlist(lapply(i.childs,function(i.child){
-      tree.recurse(ii=ii[!b.root,,drop=FALSE],root=i.child,gen=gen+1,pos=pos)
-    })))
-    root.pos = switch(pos,
-      'tip.mean' = mean(mat.childs[3,]),
-      'tip.range' = mean(range(mat.childs[3,])),
-      'child.mean' = mean(mat.childs[3,mat.childs[1,] %in% i.childs]),
-      'child.range' = mean(range(mat.childs[3,mat.childs[1,] %in% i.childs])))
-    mat.root.childs = matrix(nrow=5,c(root,gen,root.pos,sum(b.root),ncol(mat.childs),mat.childs))
+    mat.childs = do.call(rbind,lapply(i.childs,function(i.child){
+      tree.recurse(ii=ii[!b.root,,drop=FALSE],root=i.child,gen=gen+1)
+    }))
+    root.pos = mean(range(mat.childs[mat.childs[,'root'] %in% i.childs,'pos']))
+    mat.root.childs = rbind(
+      cbind(root=root,gen=gen,pos=root.pos,chi.dir=sum(b.root),chi.tot=nrow(mat.childs)),
+      mat.childs)
   } else {
     .tree.tips <<- .tree.tips + 1
-    mat.root = matrix(nrow=5,c(root,gen,.tree.tips,0,0))
+    mat.root = cbind(root=root,gen=gen,pos=.tree.tips,chi.dir=0,chi.tot=0)
   }
 }
 
@@ -164,51 +156,43 @@ graph.layout.random = function(G){
   # layout nodes randomly (uniform) within unit circle, no consideration of edges
   r = sqrt(runif(G$N.i))
   t = runif(G$N.i) * 2 * pi
-  pos = matrix(c(r*cos(t),r*sin(t)),ncol=2)
+  xy = matrix(c(r*cos(t),r*sin(t)),ncol=2)
 }
 
-graph.layout.fr = function(G,niter=500,temp.pwr=.5,temp.tau=10,dc.pwr=1,gif.pos=NULL){
+graph.layout.fr = function(G,n.iter=100,gif.xy=NULL){
   # layout nodes using Fruchterman-Reingold algorithm (attract-repulse)
-  temp = G$N.i^temp.pwr # initial speed
-  rtemp = (1-log(2)*temp.tau/niter) # speed decay
-  dc = G$N.i^dc.pwr # controls global spread
-  iie = as.factor(c(G$ii.e)) # pre-compute for speed
-  pos = graph.layout.random(G) # random initial position
-  b.tri = lower.tri(matrix(0,G$N.i,G$N.i),diag=TRUE) # pre-compute
-  tri.0 = function(x){ x[b.tri] = 0; x }
-  for (k in 1:niter){
-    # if (k %% 10 == 0){ G$attr$g$layout = pos; print(plot.graph(G)) } # DEBUG
-    if (is.list(gif.pos)){ gif.pos[[k]] = pos } # DEBUG: gif
-    # distances - TODO: this can blow up, is there a faster/less-mem way?
-    d1 = outer(pos[,1],pos[,1],'-') # dx
-    d2 = outer(pos[,2],pos[,2],'-') # dy
-    dd = d1^2 + d2^2
-    # repulsive forces
-    ddr = (dc - dd * sqrt(dd)) / (dd * dc)
-    d1r = tri.0(d1) * ddr
-    d2r = tri.0(d2) * ddr
-    d1r.sum = rowSums(d1r,na.rm=TRUE) - colSums(d1r,na.rm=TRUE)
-    d2r.sum = rowSums(d2r,na.rm=TRUE) - colSums(d2r,na.rm=TRUE)
-    # attractive forces
-    d1e = d1[G$ii.e]
-    d2e = d2[G$ii.e]
-    dde = dd[G$ii.e]
-    d1e.sum = sapply(split(c(-d1e,d1e)*dde,iie),sum)
-    d2e.sum = sapply(split(c(-d2e,d2e)*dde,iie),sum)
-    # update pos & temp
-    dpos = cbind(d1r.sum + d1e.sum, d2r.sum + d2e.sum)
-    pos = pos + dpos * temp / sqrt(dpos[,1]^2 + dpos[,2]^2)
-    temp = temp * rtemp
+  n.iter = min(n.iter,1000/sqrt(G$N.i)) # cap iter for large N
+  v  = sqrt(G$N.i) # initial speed
+  dv = exp(log(.001)/n.iter) # speed decay
+  xy = graph.layout.random(G) # random initial position
+  # define adjacency matrix
+  A = matrix(0,G$N.i,G$N.i)
+  A[G$ii.e] = sqrt(G$attr$e$dur)
+  A = A + t(A) + 1/G$N.i
+  # loop
+  for (k in 1:n.iter){
+    # if (k %% 5 == 0){ G$attr$g$layout = xy; print(plot.graph(G)) } # DEBUG
+    if (is.list(gif.xy)){ gif.xy[[k]] = xy } # DEBUG: gif
+    # compute forces
+    d = abind::abind(along=3,
+      outer(xy[,1],xy[,1],`-`),
+      outer(xy[,2],xy[,2],`-`))
+    dn = sqrt(d[,,1]^2 + d[,,2]^2) + 1e-16
+    df = einsum::einsum('ijz,ij->jz',d,A*dn-1/dn^2)
+    dfn = sqrt(df[,1]^2 + df[,2]^2)
+    # update xy & speed
+    xy = xy + einsum::einsum('iz,i->iz',df,v/dfn)
+    v = v * dv
   }
-  if (is.list(gif.pos)){ return(gif.pos) } # return gif.pos if using
-  pos = pos - rep(colMeans(pos),each=G$N.i) # return centred
+  if (is.list(gif.xy)){ return(gif.xy) } # return gif.pos if using
+  xy = xy - rep(colMeans(xy),each=G$N.i) # return centred
 }
 
 plot.graph = function(G,i.aes=list(),e.aes=list()){
   if (is.null(G$attr$g$layout)){ G$attr$g$layout = graph.layout.fr(G) }
   # defaults
   i.aes = list.update(list(size=25/G$N.i^.4,shape=21),xu=i.aes)
-  e.aes = list.update(list(curvature=0,alpha=.1),xu=e.aes)
+  e.aes = list.update(list(curvature=0,alpha='dur'),xu=e.aes)
   # required data
   i.data = setNames(data.frame(G$attr$g$layout),c('X','Y'))
   e.data = data.frame(
@@ -226,7 +210,7 @@ plot.graph = function(G,i.aes=list(),e.aes=list()){
       map=kw.call(aes_string,e.aes[b.e],x='X1',y='Y1',xend='X2',yend='Y2')) +
     kw.call(geom_point,data=i.data,i.aes[!b.i],
       kw.call(aes_string,i.aes[b.i])) +
-    guides(fill=guide_legend(override.aes=list(shape=21))) +
+    # guides(fill=guide_legend(override.aes=list(shape=21))) + # TODO: bug?
     coord_equal() +
     theme_void()
 }
@@ -235,7 +219,7 @@ plot.graph = function(G,i.aes=list(),e.aes=list()){
 # casting to igraph if needed
 
 .igraph = function(G){
-  i.deg.0 = which(G$deg.i==0)
+  i.deg.0 = which(degrees.from.edges(G$i,G$ii.e)==0)
   if (len(i.deg.0) == 0){
     iG = igraph::graph_from_edgelist(G$ii.e,dir=FALSE)
   } else {

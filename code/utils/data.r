@@ -9,7 +9,7 @@ int.cut = function(x,low){
   # cut with simplified labels assuming integer data
   # e.g. int.cut(seq(6),c(1,2,3,5)) -> c("1","2","3 - 4", "3 - 4","5 +","5 +")
   high = c(low[2:len(low)]-1,Inf)
-  labels = gsub('- Inf','+',ifelse(low==high,low,paste(low,'-',high)))
+  labels = gsub('-Inf','+',ifelse(low==high,low,paste0(low,'-',high)))
   x.cut = cut(x,breaks=c(low,Inf),labels=labels,right=FALSE)
 }
 
@@ -132,7 +132,7 @@ list.str = function(x){
 
 r.fun = function(fun,...,shift=0,rmin=NULL,rmax=NULL){
   # pre-specify some arguments to random number generating fun
-  # e.g. f = partial(runif,min=1,max=2); f(n=10) -> runif(n=10,min=1,max=2)
+  # e.g. f = r.fun(runif,min=1,max=2); f(n=10) -> runif(n=10,min=1,max=2)
   args = list(...)
   rfun = function(...){
     r = kw.call(fun,args,...) + shift
