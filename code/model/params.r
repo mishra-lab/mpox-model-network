@@ -6,7 +6,7 @@ def.params = function(seed=NULL,N=1000,...){
   P$seed           = seed
   P$N              = N # pop size total
   P$N.I0           = 10 # number initially infected
-  P$exp.deg.I0     = 0 # degree-exponent weight for initially infected
+  P$exp.deg.I0     = 1 # degree-exponent weight for initially infected
   P$dur.EI.rfun    = r.fun(rlnorm,meanlog=2.09,sdlog=0.46,rmin=3,rmax=21) # incubation period
   P$dur.IR.rfun    = r.fun(rgamma,shape=36,scale=0.58,rmin=14,rmax=28) # infectious period
   P$dur.IH.rfun    = r.fun(rgamma,shape=1.23,scale=4.05,rmin=2,rmax=20) # non-isolated period
@@ -42,9 +42,9 @@ def.params.net = function(P){
   P$dur.casu.rfun = r.fun(rweibull,shape=.5,  scale= 15,rmin=1,rmax=3650) # TODO
   P$dur.once.rfun = r.fun(rep,x=1)
   P$w.ptr.rfun  = function(n){ runif(n) }
-  P$deg.once = 7   # TODO
-  P$deg.casu = 2   # TODO
-  P$f.sex    = 1/7 # TODO
+  P$deg.once =  12 # TODO
+  P$deg.casu =   3 # TODO
+  P$f.sex    = .40 # TODO
   P$N.e.type = even(P$N / 2 * c(
     excl = .15/.607,
     open = .29/.607,
