@@ -53,9 +53,12 @@ handfit.plot.doubling = function(E){
 
 handfit.plot.G.distrs = function(E){
   # fill by main partner
-  g = plot.G.distr(E$P,'i','deg',seq(0,30),fill='stat') + geom_col() +
+  g = plot.G.distr(E$P,'i','deg',seq(0,30),fill='main.any') + geom_col() +
     labs(y='Individuals',x='Partners in past 6 months',fill='Main\nPartner\nP6M')
-    fig.save(fname('i-deg-main'),w=8,h=4)
+    fig.save(fname('i-deg-main-any'),w=8,h=4)
+  g = plot.G.distr(E$P,'i','deg',seq(0,30),fill='main.now') + geom_col() +
+    labs(y='Individuals',x='Partners in past 6 months',fill='Main\nPartner\nCurrent')
+    fig.save(fname('i-deg-main-now'),w=8,h=4)
   # fill by health at tf (180)
   E$P$G$attr$i$health = E$P$G$attr$i$health.tf
   g = plot.G.distr(E$P,'i','deg',seq(0,30),fill='health') + geom_col() +
