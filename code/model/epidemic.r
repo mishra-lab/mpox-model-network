@@ -38,11 +38,11 @@ epi.state.init = function(P){
   # values in X$dur are matched (same order) as corresponding indices in X$i
   # e.g. we couldd have X$dur$I = c(5) for above, if person i=3 became infectious 5 days ago
   S0 = P$G$i # node indices "i"
-  I0 = sample(S0,P$N.I0,p=P$G$attr$i$deg[S0]^P$exp.deg.I0)
+  I0 = sample(S0,P$N.I0,p=P$I0.pfun(P)[S0])
   S0 = setdiff(S0,I0)
-  V10 = sample(S0,min(P$N.V0[1],len(S0)),p=P$G$attr$i$deg[S0]^P$exp.deg.V0)
+  V10 = sample(S0,min(P$N.V0[1],len(S0)),p=P$V0.pfun(P)[S0])
   S0 = setdiff(S0,V10)
-  V20 = sample(S0,min(P$N.V0[2],len(S0)),p=P$G$attr$i$deg[S0]^P$exp.deg.V0)
+  V20 = sample(S0,min(P$N.V0[2],len(S0)),p=P$V0.pfun(P)[S0])
   S0 = setdiff(S0,V20)
   X = list()        # state = indices & durations
   X$i = list()      # list of indices in each state
@@ -139,11 +139,12 @@ epi.run.s = function(P.s,.par=TRUE){
 epi.results = function(P,out.t){
   # collect some results (renamed "R" -> "E")
   E = list()
-  P$G = epi.net.attrs(P$G,out.t)
   E$P = P
+  P$G = epi.net.attrs(P$G,out.t)
   E$out = epi.output(P,out.t)
   E$tree = epi.tree(P,out.t)
   if (.debug){
+    # E$A[t,i] = health state of individual i at time t (high memory)
     E$A = dn.array(list('t'=P$t.vec,'i'=seqn(P$N)),character())
     for (tj in P$t.vec){ Xij = out.t$Xi[[tj]]; for (h in names(Xij)){ E$A[tj,Xij[[h]]] = h } }
   }
@@ -195,19 +196,17 @@ epi.output = function(P,out.t){
     setNames(inc, paste0('inc.', names(inc))))
 }
 
-epi.output.melt = function(out,P){
+epi.output.melt = function(E,pars='seed'){
   # melt the data in out (usually for plotting)
-  N.t = nrow(out)
-  out.long = melt(out,id.vars='t')
+  out.long = melt(E$out,id.vars='t')
   out.long = split.col(out.long,'variable',c('var','health'),del=TRUE)
-  out.long$seed = P$seed # in case we rbind data from multiple seeds
-  return(out.long)
+  out.long = cbind(out.long,E$P[pars])
 }
 
-epi.output.melt.s = function(E.s){
+epi.output.melt.s = function(E.s,pars='seed'){
   # apply epi.output.melt to a list of E.s -- e.g. from epi.run.s
   out.long.s = kw.call(rbind,lapply(E.s,function(E){
-    out.long = epi.output.melt(E$out,E$P)
+    out.long = epi.output.melt(E,pars=pars)
   }))
 }
 

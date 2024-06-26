@@ -6,7 +6,7 @@ def.params = function(seed=NULL,N=1000,...){
   P$seed           = seed
   P$N              = N # pop size total
   P$N.I0           = 10 # number initially infected
-  P$exp.deg.I0     = 1 # degree-exponent weight for initially infected
+  P$I0.pfun        = function(P){ rep(1,P$N) } # probs for initially infected
   P$dur.EI.rfun    = r.fun(rlnorm,meanlog=2.09,sdlog=0.46,rmin=3,rmax=21) # incubation period
   P$dur.IR.rfun    = r.fun(rgamma,shape=36,scale=0.58,rmin=14,rmax=28) # infectious period
   P$dur.IH.rfun    = r.fun(rgamma,shape=1.23,scale=4.05,rmin=2,rmax=20) # non-isolated period
@@ -15,7 +15,7 @@ def.params = function(seed=NULL,N=1000,...){
   P$beta           = .67 # probability of transmission (per contact)
   P$vax.eff.dose   = c(.85,.88) # vaccine effectiveness by dose
   P$N.V0           = c(.00,.00) * P$N # total number initially vaccinated by dose
-  P$exp.deg.V0     = 0 # degree-exponent weight for initially vaccinated
+  P$V0.pfun        = function(P){ rep(1,P$N) } # probs of initially vaccinated
   P$p.detect.t     = interp.fun(c(0,30),c(0,.85),pad=TRUE) # probability of detection vs t
   P = list.update(P,...) # override any of the above
   P = def.params.net(P)
@@ -102,23 +102,22 @@ make.net = function(P){
   # attributes
   g.attr = list()
   g.attr$dur = P$net.dur
-  i.attr = list()
-  i.attr$deg = tabulate(ii.e,P$N)
   e.attr = list()
   e.attr$t0  = c(tt.excl[,1],tt.open[,1],tt.casu[,1],tt.once[,1])
   e.attr$tf  = c(tt.excl[,2],tt.open[,2],tt.casu[,2],tt.once[,2])
   e.attr$dur = e.attr$tf - e.attr$t0
-  if (.debug){ # expensive / not required
-    i.attr$w.ptr = w.i
-    i.attr$main.any = factor(levels=M$main$name,
-      ifelse(i %in% ii.excl,'excl',
-      ifelse(i %in% ii.open,'open','noma')))
-    i.attr$main.now = factor(levels=M$main$name,
-      ifelse(i %in% ii.excl[tt.excl[,2] >= 180,],'excl',
-      ifelse(i %in% ii.open[tt.open[,2] >= 180,],'open','noma')))
-    e.attr$type = factor(rep(names(P$N.e.type),P$N.e.type))
-    # hist(i.attr$deg,max(i.attr$deg)) # DEBUG
-  }
+  e.attr$type = factor(rep(names(P$N.e.type),P$N.e.type))
+  i.attr = list()
+  i.attr$n.ptr.180 = tabulate(ii.e,P$N)
+  i.attr$n.ptr.now = tabulate(ii.e[e.attr$t0 <= 1,],P$N)
+  i.attr$w.ptr = w.i
+  i.attr$main.180 = factor(levels=M$main$name,
+    ifelse(i %in% ii.excl,'excl',
+    ifelse(i %in% ii.open,'open','noma')))
+  i.attr$main.now = factor(levels=M$main$name,
+    ifelse(i %in% ii.excl[tt.excl[,2] >= 180,],'excl',
+    ifelse(i %in% ii.open[tt.open[,2] >= 180,],'open','noma')))
+  # hist(i.attr$deg,max(i.attr$deg)) # DEBUG
   # graph object
   G = graph.obj(ii.e=ii.e,i=i,g.attr=g.attr,i.attr=i.attr,e.attr=e.attr)
   # TODO: this results in .Random.seed depends on .debug: maybe move this after .Random.seed saved
