@@ -19,6 +19,7 @@ M$health$color = c(
   'V1' = '#33cc99',
   'V2' = '#009999')
 M$health$fill = M$health$color
+M$health.t0 = M$health.tf = M$health
 M$main = list()
 M$main$title = 'Main\nPartner'
 M$main$name = c('excl','open','noma')

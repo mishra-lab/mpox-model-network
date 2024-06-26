@@ -7,22 +7,20 @@ source('model/plot.r')
 
 .debug = TRUE
 
-t.vec = epi.t(tf=180)
-
 # DEBUG: run one
 # P = def.params(seed=0)
-# E = epi.run(P,t.vec)
+# E = epi.run(P)
 # plot.epidemic(epi.output.melt(E$out,P)); fig.save('.tmp/epidemic',w=8,h=4)
-# plot.network(E$P$G,list(fill='health'),list()); fig.save('.tmp/network',w=8,h=6)
+# plot.network(E$P$G,list(fill='health.tf'),list()); fig.save('.tmp/network',w=8,h=6)
 
 # build + run many
 N.s = 7
 P.s = def.params.s(N.s)
-E.s = epi.run.s(P.s,t.vec)
+E.s = epi.run.s(P.s)
 out.long.s = epi.output.melt.s(E.s)
 
 # plot prevalence
-g = plot.epidemic(out.long.s,select=list(var='N',health=c('S','E','I','H','R','V1','V2'))) +
+g = plot.epidemic(out.long.s,select=list(var='N',health=c('S','E','I','H','R','V1'))) +
   labs(y='Count',color='State',fill='State') +
   facet_wrap('~health',scales='free_y')
   fig.save('.tmp/health',w=10,h=6)
@@ -33,6 +31,6 @@ g = plot.epidemic(out.long.s,select=list(var='inc',health='all')) +
 q()
 # plot networks
 par.lapply(seq(N.s),function(s){
-  plot.network(E.s[[s]]$P$G,list(fill='health',color='inf.src',shape='inf.src'))
+  plot.network(E.s[[s]]$P$G,list(fill='health.tf',color='inf.src',shape='inf.src'))
   fig.save('.tmp/net-',s,w=7,h=7)
 })
