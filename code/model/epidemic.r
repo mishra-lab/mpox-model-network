@@ -139,8 +139,8 @@ epi.run.s = function(P.s,.par=TRUE){
 epi.results = function(P,out.t){
   # collect some results (renamed "R" -> "E")
   E = list()
-  E$P = P
   P$G = epi.net.attrs(P$G,out.t)
+  E$P = P
   E$out = epi.output(P,out.t)
   E$tree = epi.tree(P,out.t)
   if (.debug){
