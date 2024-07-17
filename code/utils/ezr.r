@@ -4,11 +4,6 @@ len = length
 lens = lengths
 seqn = seq_len
 
-equal = function(x1,x2){
-  # comparison allowing NULL, and NULL == NULL is false
-  if (is.null(x1) || is.null(x2)){ eq = FALSE } else { eq = x1==x2 }
-}
-
 kw.call = function(fun,kwds,...){
   # e.g. kw.call(sum,list(1,2),3) -> 6
   do.call(fun,c(list(...),kwds))
@@ -33,11 +28,10 @@ rename.cols = function(x,...){
   return(x)
 }
 
-as.factor.cols = function(x,names){
-  # e.g. convert names columns in x to factors
-  for (name in names){
-    x[[name]] = as.factor(x[[name]])
-  }
+remove.cols = function(x,...){
+  # e.g. remove.cols(X,'a','b') would remove columns 'a' and 'b'
+  args = c(...)
+  for (name in args){ x[[name]] = NULL }
   return(x)
 }
 
@@ -49,8 +43,4 @@ rbind.lapply = function(...,.par=FALSE){
 dn.array = function(dn,x=NA){
   # easily construct array from dimnames
   A = array(x,dim=sapply(dn,len),dimnames=dn)
-}
-
-self.name = function(x){
-  x = setNames(x,x)
 }
