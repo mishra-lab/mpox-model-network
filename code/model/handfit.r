@@ -6,21 +6,70 @@ source('model/meta.r')
 source('model/params.r')
 source('model/epidemic.r')
 source('model/plot.r')
-
-.debug = TRUE
+source('model/data.r')
 
 fname = function(slug){
   # e.g. .../code/.tmp/handfit/2022-01-01/{slug}
   root.path('out','fig','.tmp','handfit',Sys.Date(),slug,create=TRUE)
 }
 
-handfit.run = function(seed=0,...){
-  # run the model once
-  P = def.params(seed=seed,...)
-  E = epi.run(P)
+# -----------------------------------------------------------------------------
+# num ptrs in 6 months vs data
+
+fit.p6m = function(N.s=21){
+  X.dat = row.select(main.p6m(main.stat()),city='avg')
+  fit = cbind(#    init,   min,  max
+    w.shape    = c( 0.764, 0.2  , 9. ),
+    r.ptr.casu = c( 0.015, 0.001, 0.3),
+    r.ptr.once = c( 0.016, 0.001, 0.3),
+    w.pwr.excl = c(+0.103,-1    ,+1  ),
+    w.pwr.open = c(-0.115,-1    ,+1  ))
+  err.fun = function(fit){
+    X.mod = fit.p6m.mod(N.s=N.s,fit=as.list(fit))
+    e = sum(abs(X.dat$cp - X.mod$cp)^2)
+    print(c(fit,err=e))
+    return(e) }
+  opt = optim(unlist(fit[1,]),err.fun,method='L-BFGS-B',
+    lower=unlist(fit[2,]), upper=unlist(fit[3,]))
+  # opt = list(par=unlist(fit[1,])) # DEBUG
+  print(opt)
+  X.mod = fit.p6m.mod(N.s=1000,fit=as.list(opt$par))
+  fit.p6m.plot(X.dat,X.mod)
 }
 
-handfit.plot.durs = function(P){
+fit.p6m.mod = function(N.s,...,x=0:300,N=1000){
+  # get num ptrs in 6 months from N.s models
+  P.s = def.params.s(N.s,N=N,t.max=180,...,.par=FALSE)
+  X.mod = rbind.lapply(P.s,function(P){
+    n = split(P$G$attr$i$n.ptr.tot,P$G$attr$i$main.any)
+    X.mod.s = rbind.lapply(names(n),function(stat){
+      nt = tabulate0(n[[stat]],max(x))
+      data.frame(seed=P$seed,status=stat,x=x,p=nt/sum(nt),cp=cumsum(nt)/sum(nt))
+    })
+  })
+}
+
+fit.p6m.plot = function(X.dat,X.mod,x.max=50){
+  facet = c(p='Proportion',cp='Cumulative Proportion')
+  X = rbind(cbind(X.dat,seed=0,src='Data'),cbind(X.mod,city='mod',src='Model'))
+  X = melt(X,measure=names(facet),var='facet')
+  X$facet = factor(X$facet,names(facet),facet)
+  g = ggplot(X,aes(x=x,y=value,color=status,fill=status,linetype=src)) +
+    facet_grid('facet',scales='free_y') +
+    stat_summary(geom='ribbon',fun.min=min,fun.max=max,alpha=.3,color=NA) +
+    stat_summary(geom='line',fun=median) +
+    lims(x=c(0,x.max)) +
+    labs(y='Proportion',x='Total partners in 6 months',linetype='')
+  g = add.meta.scales(g,list(color='status',fill='status'))
+  g = plot.clean(g)
+  fig.save(fname('p6m'),w=5,h=5)
+}
+
+# -----------------------------------------------------------------------------
+# other param plots
+
+handfit.plot.durs = function(){
+  P = def.params()
   funs = list(
     dur.EI = 'Incubation Period',
     dur.IR = 'Infectious Period',
@@ -33,6 +82,15 @@ handfit.plot.durs = function(P){
     fig.save(fname('rfuns'),w=8,h=5)
 }
 
+# -----------------------------------------------------------------------------
+# model outputs plots
+
+handfit.run.epi = function(seed=0,...){
+  # run the model once
+  P = def.params(seed=seed,...)
+  E = epi.run(P)
+}
+
 handfit.plot.epidemic = function(E){
   # main standard plots for one run
   # TODO: maybe add multiple model runs by default
@@ -42,20 +100,6 @@ handfit.plot.epidemic = function(E){
   g = plot.epidemic(epi.output.melt(E),select=list(var='inc')) +
     labs(y='Incidence')
     fig.save(fname('incidence'),w=8,h=4)
-}
-
-handfit.plot.G.distrs = function(E){
-  # fill by main partner
-  g = plot.G.distr(E$P,'i','n.ptr.tot',cuts=seq(0,40),fill='main.any') + geom_col() +
-    labs(y='Individuals',x='Partners in past 6 months',fill='Main\nPartner\nP6M')
-    fig.save(fname('i-deg-main-any'),w=8,h=4)
-  g = plot.G.distr(E$P,'i','n.ptr.tot',cuts=seq(0,40),fill='main.now') + geom_col() +
-    labs(y='Individuals',x='Partners in past 6 months',fill='Main\nPartner\nCurrent')
-    fig.save(fname('i-deg-main-now'),w=8,h=4)
-  # fill by health at tf (180)
-  g = plot.G.distr(E$P,'i','n.ptr.tot',cuts=seq(0,40),fill='health.tf') + geom_col() +
-    labs(y='Individuals',x='Partners in past 6 months')
-    fig.save(fname('i-deg-health'),w=8,h=4)
 }
 
 handfit.plot.tree = function(E){
@@ -75,6 +119,9 @@ handfit.plot.tree = function(E){
     g = add.tree.margin(add.cmaps(g,'Transmission',option='viridis'))
     fig.save(fname('tree-n-child'),g=g,w=8,h=6)
 }
+
+# -----------------------------------------------------------------------------
+# dynamic network gif (expensive)
 
 handfit.network.gif = function(seed=0,N=100,tf=100,fps=5){
   # make a gif from plot.network, showing health states over time
@@ -98,12 +145,16 @@ handfit.network.gif = function(seed=0,N=100,tf=100,fps=5){
   animate(g,nframes=tf,fps=fps,w=600,h=500,renderer=gifski_renderer(f))
 }
 
+# -----------------------------------------------------------------------------
+# main
+
 if (sys.nframe() == 0){
+  .debug = FALSE
+  fit.p6m()
+  handfit.plot.durs()
   .debug = TRUE
-  E = handfit.run()
-  handfit.plot.durs(E$P)
+  E = handfit.run.epi()
   handfit.plot.epidemic(E)
-  handfit.plot.G.distrs(E)
   handfit.plot.tree(E)
   handfit.network.gif()
 }

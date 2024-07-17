@@ -1,9 +1,10 @@
 
-def.params = function(seed=NULL,N=1000,...){
+def.params = function(seed=NULL,N=1000,t.max=180,...){
   set.seed(seed)
   P = list()
   # independent parameters (mostly)
   P$seed           = seed
+  P$t.max          = t.max
   P$N              = N # pop size total
   P$N.I0           = 10 # number initially infected
   P$I0.pfun        = function(P){ rep(1,P$N) } # probs for initially infected
@@ -16,7 +17,12 @@ def.params = function(seed=NULL,N=1000,...){
   P$vax.eff.dose   = c(.85,.88) # vaccine effectiveness by dose
   P$N.V0           = c(.00,.00) * P$N # total number initially vaccinated by dose
   P$V0.pfun        = function(P){ rep(1,P$N) } # probs of initially vaccinated
-  P$p.detect.t     = interp.fun(c(0,30),c(0,.85),pad=TRUE) # probability of detection vs t
+  P$fit = list(
+    w.shape    =  0.764,
+    r.ptr.casu =  0.015,
+    r.ptr.once =  0.016,
+    w.pwr.excl = +0.103,
+    w.pwr.open = -0.115)
   P = list.update(P,...) # override any of the above
   P = def.params.net(P)
   # conditional parameters
@@ -37,19 +43,18 @@ even = function(x){ x = round(x); x + x %% 2 }
 rcap = function(x,xmin=1,xmax=Inf){ pmax(xmin,pmin(xmax,round(x))) }
 
 def.params.net = function(P){
-  P$t.vec = 1:180
-  P$dur.main.rfun = r.fun(rweibull,shape=.521,scale=916,rmin=7,rmax=3650) # TODO
-  P$dur.casu.rfun = r.fun(rweibull,shape=.5,  scale= 15,rmin=1,rmax=3650) # TODO
+  P$t.vec         = 1:P$t.max
+  P$dur.main.rfun = r.fun(rweibull,shape=.585,scale=1059,rmin=7,rmax=3650)
+  P$dur.casu.rfun = r.fun(rweibull,shape=.387,scale= 199,rmin=1,rmax=3650)
   P$dur.once.rfun = r.fun(rep,x=1)
-  P$w.ptr.rfun  = function(n){ runif(n) }
-  P$deg.once =  12 # TODO
-  P$deg.casu =   3 # TODO
+  P$w.ptr.rfun  = function(n){ rweibull(n,shape=P$fit$w.shape) }
   P$f.sex    = .40 # TODO
+  p.main.xs = 1-.046*P$t.max^.39 # handfit
   P$N.e.type = even(P$N / 2 * c(
-    excl = .15/.607,
-    open = .29/.607,
-    casu = P$deg.casu,
-    once = P$deg.once))
+    excl = .192/p.main.xs,
+    open = .272/p.main.xs,
+    casu = P$fit$r.ptr.once*P$t.max,
+    once = P$fit$r.ptr.casu*P$t.max))
   return(P)
 }
 
@@ -62,7 +67,7 @@ sample.tt = function(dur){
 
 e.match = function(ii.excl,ii.misc){
   # for each i in ii.misc, return the row where i is found in ii.excl, or NA
-  # len(e) = 2*nrow(ii.misc) corresponding to c(ii[,1],ii[,2])
+  # len(e) = 2*nrow(ii.misc) corresponding to c(ii) = c(ii[,1],ii[,2])
   e = match(ii.misc,ii.excl) %% nrow(ii.excl)
   e[e==0] = nrow(ii.excl)
   return(e)
@@ -92,8 +97,10 @@ make.net = function(P){
   tt.casu = sample.tt(P$dur.casu.rfun(P$N.e.type[3]))
   tt.once = sample.tt(P$dur.once.rfun(P$N.e.type[4]))
   # assign pairs
-  i.excl = sample(i,P$N.e.type[1]*2,prob=1-w.i) # inds with 1 excl-main
-  i.open = sample(i[-i.excl],P$N.e.type[2]*2)   # inds with 1 open-main
+  w.excl = w.i^P$fit$w.pwr.excl
+  w.open = w.i^P$fit$w.pwr.open
+  i.excl = sample(i,P$N.e.type[1]*2,prob=w.excl) # inds with 1 excl-main
+  i.open = sample(i[-i.excl],P$N.e.type[2]*2,prob=w.open[-i.excl]) # inds with 1 open-main
   ii.excl = matrix(i.excl,ncol=2) # excl pairs
   ii.open = matrix(i.open,ncol=2) # open pairs
   ii.casu = assign.ii(tt.excl,tt.casu,ii.excl,i,w.i) # casu pairs
@@ -108,10 +115,10 @@ make.net = function(P){
   e.attr$dur = e.attr$tf - e.attr$t0
   e.attr$type = factor(rep(names(P$N.e.type),P$N.e.type))
   i.attr = list()
-  i.attr$n.ptr.180 = tabulate(ii.e,P$N)
+  i.attr$n.ptr.tot = tabulate(ii.e,P$N)
   i.attr$n.ptr.now = tabulate(ii.e[e.attr$t0 <= 1,],P$N)
   i.attr$w.ptr = w.i
-  i.attr$main.180 = factor(levels=M$main$name,
+  i.attr$main.any = factor(levels=M$main$name,
     ifelse(i %in% ii.excl,'excl',
     ifelse(i %in% ii.open,'open','noma')))
   i.attr$main.now = factor(levels=M$main$name,
