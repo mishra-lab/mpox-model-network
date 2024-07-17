@@ -9,8 +9,8 @@ source('model/plot.r')
 source('model/data.r')
 
 fname = function(slug){
-  # e.g. .../code/.tmp/handfit/2022-01-01/{slug}
-  root.path('out','fig','.tmp','handfit',Sys.Date(),slug,create=TRUE)
+  # e.g. .../code/.tmp/fit/2022-01-01/{slug}
+  root.path('out','fig','.tmp','fit',Sys.Date(),slug,create=TRUE)
 }
 
 # -----------------------------------------------------------------------------
@@ -68,7 +68,7 @@ fit.p6m.plot = function(X.dat,X.mod,x.max=50){
 # -----------------------------------------------------------------------------
 # other param plots
 
-handfit.plot.durs = function(){
+fit.plot.durs = function(){
   P = def.params()
   funs = list(
     dur.EI = 'Incubation Period',
@@ -85,13 +85,13 @@ handfit.plot.durs = function(){
 # -----------------------------------------------------------------------------
 # model outputs plots
 
-handfit.run.epi = function(seed=0,...){
+fit.run.epi = function(seed=0,...){
   # run the model once
   P = def.params(seed=seed,...)
   E = epi.run(P)
 }
 
-handfit.plot.epidemic = function(E){
+fit.plot.epidemic = function(E){
   # main standard plots for one run
   # TODO: maybe add multiple model runs by default
   g = plot.epidemic(epi.output.melt(E),select=list(health=c('E','I','H'))) +
@@ -102,7 +102,7 @@ handfit.plot.epidemic = function(E){
     fig.save(fname('incidence'),w=8,h=4)
 }
 
-handfit.plot.tree = function(E){
+fit.plot.tree = function(E){
   # common stuff
   add.cmaps = function(g,label,...){ g = g +
     viridis::scale_color_viridis(...,discrete=TRUE) +
@@ -123,7 +123,7 @@ handfit.plot.tree = function(E){
 # -----------------------------------------------------------------------------
 # dynamic network gif (expensive)
 
-handfit.network.gif = function(seed=0,N=100,tf=100,fps=5){
+fit.network.gif = function(seed=0,N=100,tf=100,fps=5){
   # make a gif from plot.network, showing health states over time
   library('gganimate')
     # define params & run model
@@ -151,10 +151,10 @@ handfit.network.gif = function(seed=0,N=100,tf=100,fps=5){
 if (sys.nframe() == 0){
   .debug = FALSE
   fit.p6m()
-  handfit.plot.durs()
+  fit.plot.durs()
   .debug = TRUE
-  E = handfit.run.epi()
-  handfit.plot.epidemic(E)
-  handfit.plot.tree(E)
-  handfit.network.gif()
+  E = fit.run.epi()
+  fit.plot.epidemic(E)
+  fit.plot.tree(E)
+  fit.network.gif()
 }
