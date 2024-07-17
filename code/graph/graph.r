@@ -1,8 +1,5 @@
 source('utils/all.r')
 
-# TODO: add comments per-function
-# TODO: change notation i -> n ("node" more cononical)
-
 # key notation:
 # G: a graph object
 # i: indices of nodes (people) in the graph
@@ -30,87 +27,6 @@ graph.obj = function(ii.e,i=NULL,g.attr=NULL,i.attr=NULL,e.attr=NULL){
   G$attr$i = i.attr
   G$attr$e = e.attr
   return(G)
-}
-
-# ==================================================================================================
-# graph generation tools
-
-degrees.balanced = function(deg.i,by=2){
-  rem = sum(deg.i) %% by
-  if (rem == 0){ return(deg.i) }
-  i.fix = sample.int(len(deg.i),rem)
-  deg.i[i.fix] = deg.i[i.fix] + 1
-  return(deg.i)
-}
-
-degrees.from.edges = function(i,ii.e){
-  deg.i = c(unname(table(factor(c(ii.e),i))))
-}
-
-edges.random = function(i,shuffle=TRUE){
-  wrap = ifelse(shuffle,sample,identity)
-  ii.e = edges.low.high(matrix(wrap(i),ncol=2))
-}
-
-edges.group.odds = function(i,g,or.gg,shuffle=TRUE){
-  if (shuffle){ ord = order(sample(i)); i = i[ord]; g = g[ord] }
-  i.g = split(i,g) # split i by g
-  N.g = lens(i.g)  # count i by g
-  u.g = 1:len(N.g) # unique levels in g
-  N.gg.0 = outer(N.g,N.g)/sum(N.g)/2 # proportional mixing
-  N.gg = iter.prop.fit(or.gg*N.gg.0,N.g/2) # applying odds (preferences)
-  for (g in u.g){ N.gg[g,] = round.sum(N.gg[g,],N.g[g]/2) } # sum-preserving rounding
-  i.gg = lapply(u.g,function(g){ # assign i to each gg case
-    # e.g. i.gg[[1]][[2]] is the i in group 1 having edges with group 2
-    split(i.g[[g]],factor(rep(u.g,N.gg[g,]),u.g))
-  })
-  gg.m = combn(u.g,2)
-  ii.e = do.call(rbind,c( # build edges
-    lapply(u.g,function(g){ # for g1 = g2
-      ii.e.g = edges.unloop(edges.random(i.gg[[g]][[g]],shuffle=FALSE))
-    }),
-    lapply(1:ncol(gg.m),function(m){ # for g1 != g2
-      g1 = gg.m[1,m]; g2 = gg.m[2,m];
-      ii.e.gg = edges.unloop(edges.random(c(i.gg[[g1]][[g2]],i.gg[[g2]][[g1]]),shuffle=FALSE))
-    })
-  ))
-}
-
-edges.from.degrees = function(i,deg.i){
-  ii.e = edges.random(rep(i,times=deg.i))
-}
-
-edges.unloop = function(ii.e){
-  e.loops = (ii.e[,1] == ii.e[,2])
-  n.loops = sum(e.loops)
-  if (n.loops == 0){ return(ii.e) }
-  if (n.loops == 1){ return(ii.e[!e.loops,]) }
-  if (len(unique(ii.e[e.loops,1]))==1){ return(ii.e[!e.loops,]) }
-  ii.e[e.loops,2] = sample(ii.e[e.loops,2])
-  return(edges.unloop(edges.low.high(ii.e)))
-}
-
-edges.repeated = function(ii.e,r.e){
-  if (nrow(ii.e)==0){ return(ii.e) }
-  ii.e = ii.e[rep(1:nrow(ii.e),times=r.e),]
-}
-
-index.repeated.edges = function(ii.e){
-  ord.e = edges.sort.order(ii.e)
-  ii.e.ord = ii.e[ord.e,]
-  e.hash = ii.e.ord[,1] * 1e6 + ii.e.ord[,2]
-  R = rle(e.hash)
-  k.e.ord = unname(do.call(c,lapply(R$lengths,seqn)))
-  r.e.ord = rep(R$lengths,times=R$lengths)
-  kr.e = cbind(k.e.ord[order(ord.e)],r.e.ord[order(ord.e)])
-}
-
-edges.low.high = function(ii.e){
-  return(cbind(pmin(ii.e[,1],ii.e[,2]),pmax(ii.e[,1],ii.e[,2])))
-}
-
-edges.sort.order = function(ii.e){
-  return(order(ii.e[,1],ii.e[,2]))
 }
 
 # ==================================================================================================
@@ -219,7 +135,7 @@ plot.graph = function(G,i.aes=list(),e.aes=list()){
 # casting to igraph if needed
 
 .igraph = function(G){
-  i.deg.0 = which(degrees.from.edges(G$i,G$ii.e)==0)
+  i.deg.0 = which(c(unname(table(factor(c(ii.e),i))))==0)
   if (len(i.deg.0) == 0){
     iG = igraph::graph_from_edgelist(G$ii.e,dir=FALSE)
   } else {
