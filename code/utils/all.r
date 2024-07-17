@@ -3,5 +3,8 @@ source('utils/data.r')
 source('utils/files.r')
 source('utils/plot.r')
 source('utils/compute.r')
-options(width=200)
-options(stringsAsFactors=FALSE)
+options(
+  stringsAsFactors=FALSE,
+  showNCalls=500,
+  nwarnings=1e4,
+  width=200)
