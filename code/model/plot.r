@@ -55,7 +55,8 @@ plot.tree = function(tree,...,t.root=NA,pc.map=TRUE){
 add.tree.margin = function(g,fill=TRUE){
   # add marginal to tree, but must do this last as ggMarginal creates a gtable
   g = g + theme(legend.position='top')
-  g = ggMarginal(g,type='hist',margins='y',lwd=.25,color='white',alpha=.8,groupFill=!is.null(fill),
+  g = ggExtra::ggMarginal(g,type='hist',margins='y',
+    lwd=.25,color='white',alpha=.8,groupFill=!is.null(fill),
     yparams=list(binwidth=1))
 }
 
@@ -76,17 +77,20 @@ plot.durs = function(rfuns,n=1e5,xmax=30,dx=1){
   g = plot.clean(g)
 }
 
-plot.G.distr = function(P.s,gie,attr,vals,select=list(),...){
+plot.G.distr = function(P.s,gie,attr,select=list(),...,cuts=NULL,cum=FALSE){
   # plot distribution(s) of attributes in P$G (or P.s)
   # note: no geom by default for flexibility; we just collect the histogram data
   if ('G' %in% names(P.s)){ P.s = list(P.s) }
-  f = formula(paste('.','~',paste(c(attr,'seed',...),collapse=' + ')))
+  f = formula(paste('n','~',paste(c(attr,'seed',...),collapse=' + ')))
   data.raw = do.call(rbind,lapply(P.s,function(P){
-    cbind('seed'=P$seed,'.'=1,as.data.frame(P$G$attr[[gie]]))
+    cbind('seed'=P$seed,'n'=1,as.data.frame(P$G$attr[[gie]]))
   }))
   data = aggregate(f,row.select(data.raw,select),sum)
-  data$x.cut = int.cut(data[[attr]],vals)
-  g = ggplot(row.select(data,select),aes_string(x='x.cut',y='.',...))
+  if (!is.null(cuts)){ data[[attr]] = int.cut(data[[attr]],cuts) }
+  if (cum){
+    ids = lapply(list('seed',...),function(v){ data[[v]] })
+    data$n = do.call(ave,c(list(x=data$n,FUN=cum1),ids)) }
+  g = ggplot(data,aes_string(x=attr,y='n',...))
   g = add.meta.scales(g,list(...))
   g = plot.clean(g)
 }
@@ -106,25 +110,3 @@ plot.epidemic = function(out.long,select=list(),conf.int=.9,facet=NULL,color='he
   g = plot.clean(g)
   return(g)
 }
-
-plot.doubling = function(E.s,lag=7,bw=3,conf.int=.9,facet=NULL,clip=180){
-  # compute and plot doubling time, with and without considering p.detect.t
-  if (length(names(E.s))){ E.s = list(E.s) } # easy fix for E vs E.s
-  t2x.s = do.call(rbind,lapply(E.s,function(E){
-    t2x = data.frame(
-      't' = E$out$t,
-      'seed' = E$P$seed,
-      'Actual'   = t.doubling(lag=lag,bw=bw,clip=clip,E$out$inc.all),
-      'Detected' = t.doubling(lag=lag,bw=bw,clip=clip,E$out$inc.all * E$P$p.detect.t(E$out$t)))
-  }))
-  map = list(color='Cases')
-  t2x.s.long = melt(t2x.s,id.vars=c('t','seed'),var='Cases')
-  t2x.s.long.q = aggr.quantile(t2x.s.long,'t','value',map=map,facet=facet)
-  g = ggplot(t2x.s.long.q,aes.quantile(x='t',y='value',map)) +
-    geom_line() +
-    geom_ribbon(color=NA,alpha=.2) +
-    labs(x='Time (days)',y='Doubling Time (days)',color='Cases',fill='Cases') +
-    facet_grid(facet)
-  g = plot.clean(g)
-}
-
