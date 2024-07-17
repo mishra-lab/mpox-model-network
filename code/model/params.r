@@ -99,8 +99,8 @@ make.net = function(P){
   # assign pairs
   w.excl = w.i^P$fit$w.pwr.excl
   w.open = w.i^P$fit$w.pwr.open
-  i.excl = sample(i,P$N.e.type[1]*2,prob=w.excl) # inds with 1 excl-main
-  i.open = sample(i[-i.excl],P$N.e.type[2]*2,prob=w.open[-i.excl]) # inds with 1 open-main
+  i.excl = sample.wtd(i,w=w.excl,n=P$N.e.type[1]*2) # inds with 1 excl-main
+  i.open = sample.wtd(i[-i.excl],w=w.open[-i.excl],n=P$N.e.type[2]*2) # inds with 1 open-main
   ii.excl = matrix(i.excl,ncol=2) # excl pairs
   ii.open = matrix(i.open,ncol=2) # open pairs
   ii.casu = assign.ii(tt.excl,tt.casu,ii.excl,i,w.i) # casu pairs

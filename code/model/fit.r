@@ -41,7 +41,7 @@ fit.p6m.mod = function(N.s,...,x=0:300,N=1000){
   # get num ptrs in 6 months from N.s models
   P.s = def.params.s(N.s,N=N,t.max=180,...,.par=FALSE)
   X.mod = rbind.lapply(P.s,function(P){
-    n = split(P$G$attr$i$n.ptr.tot,P$G$attr$i$main.any)
+    n = split(P$G$attr$i$n.ptr.tot,P$G$attr$i$main.now)
     X.mod.s = rbind.lapply(names(n),function(stat){
       nt = tabulate0(n[[stat]],max(x))
       data.frame(seed=P$seed,status=stat,x=x,p=nt/sum(nt),cp=cumsum(nt)/sum(nt))
