@@ -19,19 +19,19 @@ fname = function(slug){
 fit.p6m = function(N.s=21){
   X.dat = row.select(main.p6m(main.stat()),city='avg')
   fit = cbind(#    init,   min,  max
-    w.shape    = c( 0.764, 0.2  , 9. ),
-    r.ptr.casu = c( 0.015, 0.001, 0.3),
-    r.ptr.once = c( 0.016, 0.001, 0.3),
-    w.pwr.excl = c(+0.103,-1    ,+1  ),
-    w.pwr.open = c(-0.115,-1    ,+1  ))
+    w.shape    = c( 0.800, 0.4  , 9.0),
+    r.ptr.casu = c( 0.017, 0.001, 0.3),
+    r.ptr.once = c( 0.017, 0.001, 0.3),
+    w.pwr.excl = c(+0.300,-1    ,+1  ),
+    w.pwr.open = c(-0.300,-1    ,+1  ))
   err.fun = function(fit){
     X.mod = fit.p6m.mod(N.s=N.s,fit=as.list(fit))
     e = sum(abs(X.dat$cp - X.mod$cp)^2)
     print(c(fit,err=e))
     return(e) }
   opt = optim(unlist(fit[1,]),err.fun,method='L-BFGS-B',
-    lower=unlist(fit[2,]), upper=unlist(fit[3,]))
-  # opt = list(par=unlist(fit[1,])) # DEBUG
+    lower=unlist(fit[2,]),upper=unlist(fit[3,]))
+  # opt = list(par=unlist(fit[1,])); opt$value = err.fun(opt$par) # DEBUG
   print(opt)
   X.mod = fit.p6m.mod(N.s=1000,fit=as.list(opt$par))
   fit.p6m.plot(X.dat,X.mod)

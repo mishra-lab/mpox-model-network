@@ -7,7 +7,7 @@ def.params = function(seed=NULL,N=1000,t.max=180,...){
   P$t.max          = t.max
   P$N              = N # pop size total
   P$N.I0           = 10 # number initially infected
-  P$I0.pfun        = function(P){ rep(1,P$N) } # probs for initially infected
+  P$I0.pfun        = function(P){ P$G$attr$i$w.ptr } # probs for initially infected
   P$dur.EI.rfun    = r.fun(rlnorm,meanlog=2.09,sdlog=0.46,rmin=3,rmax=21) # incubation period
   P$dur.IR.rfun    = r.fun(rgamma,shape=36,scale=0.58,rmin=14,rmax=28) # infectious period
   P$dur.IH.rfun    = r.fun(rgamma,shape=1.23,scale=4.05,rmin=2,rmax=20) # non-isolated period
@@ -18,11 +18,11 @@ def.params = function(seed=NULL,N=1000,t.max=180,...){
   P$N.V0           = c(.00,.00) * P$N # total number initially vaccinated by dose
   P$V0.pfun        = function(P){ rep(1,P$N) } # probs of initially vaccinated
   P$fit = list(
-    w.shape    =  0.764,
-    r.ptr.casu =  0.015,
-    r.ptr.once =  0.016,
-    w.pwr.excl = +0.103,
-    w.pwr.open = -0.115)
+    w.shape    =  0.8,
+    r.ptr.casu =  0.017,
+    r.ptr.once =  0.017,
+    w.pwr.excl = +0.3,
+    w.pwr.open = -0.3)
   P = list.update(P,...) # override any of the above
   P = def.params.net(P)
   # conditional parameters
@@ -48,11 +48,11 @@ def.params.net = function(P){
   P$dur.casu.rfun = r.fun(rweibull,shape=.387,scale= 199,rmin=1,rmax=3650)
   P$dur.once.rfun = r.fun(rep,x=1)
   P$w.ptr.rfun  = function(n){ rweibull(n,shape=P$fit$w.shape) }
-  P$f.sex    = .40 # TODO
+  P$f.sex    = .25 # TODO
   p.main.xs = 1-.046*P$t.max^.39 # handfit
   P$N.e.type = even(P$N / 2 * c(
-    excl = .192/p.main.xs,
-    open = .272/p.main.xs,
+    excl = .154/p.main.xs,
+    open = .309/p.main.xs,
     casu = P$fit$r.ptr.once*P$t.max,
     once = P$fit$r.ptr.casu*P$t.max))
   return(P)
