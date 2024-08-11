@@ -3,11 +3,11 @@ source('model/meta.r')
 source('model/plot.r')
 
 data.fig.save = function(var,...){
-  fig.save(root.path('out','fig','fit',paste0('data-',var)),...)
+  fig.save(root.path('out','fig','.tmp','fit',paste0('engage-',var)),...)
 }
 
 load.data = function(var){
-  X = read.csv(root.path('data','.private',sprintf('engage_%s.csv',var)))
+  X = read.csv(root.path('data','.private','engage',sprintf('engage_%s.csv',var)))
   X = rename.cols(X,reltn_type='type',rel_status='status',p_rel.rds='p')
 }
 
@@ -42,7 +42,7 @@ main.q = function(var,label,vscale=1,vmax=1){
   g = plot.clean(add.meta.scales(g,list(color='city')))
   data.fig.save(var,w=6,h=5)
 }
-p.uncl.excl = 0.5 # assign uncl: 50% to excl & 50% to open
+p.uncl.excl = 0.0 # assign uncl: 50% to excl & 50% to open
 stats = list(
   excl = 'main-exclusive',
   open = 'main-open',
@@ -89,6 +89,6 @@ plot.p6m = function(X,xmax=100,tform='identity'){
 }
 
 # main.q('pdur',label='Duration (years)',vscale=365,vmax=30)
-# main.q('fsex',label='Frequency (per day)',vscale=180,vmax=.5)
+# main.q('fsex',label='Frequency (per day)',vscale=1,vmax=1)
 # p = main.stat()
 # x = main.p6m(p,plot=TRUE)
