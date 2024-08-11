@@ -6,7 +6,7 @@ source('model/meta.r')
 source('model/params.r')
 source('model/epidemic.r')
 source('model/plot.r')
-source('model/data.r')
+source('data/engage.r')
 
 fname = function(slug){
   # e.g. .../code/.tmp/fit/2022-01-01/{slug}
