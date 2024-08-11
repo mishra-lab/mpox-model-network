@@ -6,7 +6,6 @@ source('model/meta.r')
 source('model/params.r')
 source('model/epidemic.r')
 source('model/plot.r')
-source('data/engage.r')
 
 fname = function(slug){
   # e.g. .../code/.tmp/fit/2022-01-01/{slug}
@@ -14,9 +13,10 @@ fname = function(slug){
 }
 
 # -----------------------------------------------------------------------------
-# num ptrs in 6 months vs data
+# num ptrs vs data
 
-fit.p6m = function(N.s=21){
+fit.engage = function(N.s=21){
+  source('data/engage.r')
   X.dat = row.select(main.p6m(main.stat()),city='avg')
   fit = cbind(#    init,   min,  max
     w.shape    = c( 0.800, 0.4  , 9.0),
@@ -25,7 +25,7 @@ fit.p6m = function(N.s=21){
     w.pwr.excl = c(+0.300,-1    ,+1  ),
     w.pwr.open = c(-0.300,-1    ,+1  ))
   err.fun = function(fit){
-    X.mod = fit.p6m.mod(N.s=N.s,fit=as.list(fit))
+    X.mod = fit.ptr.mod(N.s=N.s,fit=as.list(fit),status='main.now')
     e = sum(abs(X.dat$cp - X.mod$cp)^2)
     print(c(fit,err=e))
     return(e) }
@@ -33,36 +33,66 @@ fit.p6m = function(N.s=21){
     lower=unlist(fit[2,]),upper=unlist(fit[3,]))
   # opt = list(par=unlist(fit[1,])); opt$value = err.fun(opt$par) # DEBUG
   print(opt)
-  X.mod = fit.p6m.mod(N.s=1000,fit=as.list(opt$par))
-  fit.p6m.plot(X.dat,X.mod)
+  X.mod = fit.ptr.mod(N.s=1000,fit=as.list(opt$par),status='main.now')
+  fit.ptr.plot(X.dat,X.mod); fig.save(fname('ptr.180.engage'),w=5,h=5)
 }
 
-fit.p6m.mod = function(N.s,...,x=0:300,N=1000){
-  # get num ptrs in 6 months from N.s models
+fit.kenya = function(N.s=21){
+  source('data/kenya.r')
+  X.dat = subset(main.ptr(),x < 6 | county=='all')
+  for (dti in c(7,30)){
+    X.mod = cbind(fit.ptr.mod(N.s=N.s,dt=dti,x=0:20),county='mod')
+    X.dat.dt = subset(X.dat,dt==dti)
+    fit.ptr.plot(X.dat.dt,X.mod,dti,x.max=20,clr='county')
+    fig.save(fname(sprintf('ptr.%d.kenya',dti)),w=5,h=5)
+  }
+}
+
+fit.ptr.mod = function(N.s,x=0:300,dt=180,...,N=1000,status='.'){
+  # lookup or compute histogram of # partners observed in dt
+  # for N.s param sets (pop size = N), possibly stratified by status
+  t.obs = seq(0,180,max(dt,30))
   P.s = def.params.s(N.s,N=N,t.max=180,...,.par=FALSE)
-  X.mod = rbind.lapply(P.s,function(P){
-    n = split(P$G$attr$i$n.ptr.tot,P$G$attr$i$main.now)
-    X.mod.s = rbind.lapply(names(n),function(stat){
-      nt = tabulate0(n[[stat]],max(x))
-      data.frame(seed=P$seed,status=stat,x=x,p=nt/sum(nt),cp=cumsum(nt)/sum(nt))
+  X.mod = rbind.lapply(P.s,function(P){ # each param set
+    P$G$attr$i$. = 0 # dummy stat
+    t0.e = P$G$attr$e$t0 # for speed
+    tf.e = P$G$attr$e$tf # for speed
+    i.stat = split(P$G$i,P$G$attr$i[[status]]) # split by status
+    X.mod.s = rbind.lapply(names(i.stat),function(stat){ # each status
+      i.s = i.stat[[stat]] # individuals with this status
+      if (dt==180){ # lookup # ptrs -> 1 histogram
+        nt = tabulate0(P$G$attr$i$n.ptr.tot[i.s],max(x))
+        nt = matrix(nt,nrow=len(x)) # for apply below
+      } else { # compute # ptrs -> len(t.obs) histograms
+        e.i = lapply(i.s,function(i){ # partners per individual
+          which(P$G$ii.e[,1]==i | P$G$ii.e[,2]==i) })
+        nt = sapply(t.obs,function(t){ # for each observing window
+          tabulate0(vapply(e.i,function(e){ # histogram: ptrs observed
+            sum(t0.e[e] <= t+dt & tf.e[e] >= t)
+          },0),max(x))
+        })
+      }
+      X.mod.ms = data.frame(seed=P$seed,dt=dt,status=stat,x=x,
+        p=c(apply(nt,2,sum1)),cp=c(apply(nt,2,cum1)))
     })
   })
 }
 
-fit.p6m.plot = function(X.dat,X.mod,x.max=50){
-  facet = c(p='Proportion',cp='Cumulative Proportion')
-  X = rbind(cbind(X.dat,seed=0,src='Data'),cbind(X.mod,city='mod',src='Model'))
-  X = melt(X,measure=names(facet),var='facet')
-  X$facet = factor(X$facet,names(facet),facet)
-  g = ggplot(X,aes(x=x,y=value,color=status,fill=status,linetype=src)) +
+fit.ptr.plot = function(X.dat,X.mod,dt=180,x.max=50,clr='status'){
+  ptr.facet = c(p='Proportion',cp='Cumulative Proportion')
+  cols = intersect(names(X.dat),names(X.mod))
+  X = rbind(cbind(X.dat[,cols],src='Data'),cbind(X.mod[,cols],src='Model'))
+  X = melt(X,measure=names(ptr.facet),var='facet')
+  X$facet = factor(X$facet,names(ptr.facet),ptr.facet)
+  g = ggplot(X,aes(x=x,y=value,color=.data[[clr]],fill=.data[[clr]],linetype=src)) +
     facet_grid('facet',scales='free_y') +
     stat_summary(geom='ribbon',fun.min=min,fun.max=max,alpha=.3,color=NA) +
     stat_summary(geom='line',fun=median) +
     lims(x=c(0,x.max)) +
-    labs(y='Proportion',x='Total partners in 6 months',linetype='')
-  g = add.meta.scales(g,list(color='status',fill='status'))
+    labs(y='Proportion',linetype='') +
+    xlab(sprintf('Total number of partners in %d days',dt))
+  g = add.meta.scales(g,list(color=clr,fill=clr))
   g = plot.clean(g)
-  fig.save(fname('p6m'),w=5,h=5)
 }
 
 # -----------------------------------------------------------------------------
@@ -150,7 +180,8 @@ fit.network.gif = function(seed=0,N=100,tf=100,fps=5){
 
 if (sys.nframe() == 0){
   .debug = FALSE
-  fit.p6m()
+  fit.engage()
+  fit.kenya()
   fit.plot.durs()
   .debug = TRUE
   E = fit.run.epi()
