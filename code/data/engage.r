@@ -82,7 +82,7 @@ main.p6m = function(p,plot=FALSE){
 plot.p6m = function(X,xmax=100,tform='identity'){
   g = ggplot(X[X$x<xmax,],aes(y=cp,x=x,color=city)) +
     facet_grid('status') +
-    geom_line(aes(color=city)) +
+    geom_line() +
     scale_x_continuous(trans=tform) +
     labs(x='Number of sexual partners (past 6 months)',y='Cumulative proportion')
   g = plot.clean(add.meta.scales(g,list(color='city')))
