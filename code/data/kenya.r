@@ -14,22 +14,24 @@ main.ptr = function(plot=FALSE){
   X = load.data('ptr_x')
   X$cp = ave(X$p,X$county,X$dt,FUN=cumsum) # cum prob
   if (plot){
-    g = plot.ptr(X); data.fig.save('ptr',w=6,h=5) }
+    g = plot.ptr(X); data.fig.save('ptr',w=7,h=5) }
   return(X)
 }
 
-plot.ptr = function(X,xmin=6,xmax=20,tform='identity'){
+plot.ptr = function(X){
+  var.ftr = c('p'='Proportion','cp'='Cumulative proportion')
   X$dts = sprintf('Recall period: %d days',X$dt)
   i = X$county != 'all'
-  Y = cbind(X[i & X$x >= xmin-1,],xmin=xmin-1:0,xmax=c(xmin-1,xmax))
-  X$x[i & X$x==xmin] = NA
-  g = ggplot(X,aes(y=cp,x=x,fill=county,color=county)) +
-    facet_grid('dts') +
-    geom_line() +
-    geom_ribbon(data=Y,aes(xmin=xmin,xmax=xmax),color=NA,alpha=.3) +
-    scale_x_continuous(trans=tform) +
-    labs(x='Number of sexual partners',y='Cumulative proportion') +
-    ylim(c(-.001,1.001))
+  X$x[i & X$x==6] = NA
+  X$x[X$dt==7 & X$x>8] = NA
+  X = melt(X,measure=names(var.ftr))
+  X$var = factor(X$variable,names(var.ftr),var.ftr)
+  g = ggplot(X,aes(y=value,x=x,fill=county,color=county)) +
+    facet_grid('var~dts',scales='free') +
+    geom_line() + geom_point(size=1) +
+    # geom_bar(stat='identity',position=position_dodge(preserve='single'),color=NA) +
+    labs(x='Number of sexual partners',y='Value') +
+    ylim(c(0,NA))
   g = plot.clean(add.meta.scales(g,list(color='county',fill='county')))
 }
 
