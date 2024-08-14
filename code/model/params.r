@@ -1,9 +1,10 @@
 
-def.params = function(seed=NULL,N=1000,t.max=180,...){
+def.params = function(seed=NULL,N=1000,context='engage',t.max=180,...){
   set.seed(seed)
   P = list()
   # independent parameters (mostly)
   P$seed           = seed
+  P$context        = context
   P$t.max          = t.max
   P$N              = N # pop size total
   P$N.I0           = 10 # number initially infected
@@ -17,12 +18,7 @@ def.params = function(seed=NULL,N=1000,t.max=180,...){
   P$vax.eff.dose   = c(.85,.88) # vaccine effectiveness by dose
   P$N.V0           = c(.00,.00) * P$N # total number initially vaccinated by dose
   P$V0.pfun        = function(P){ rep(1,P$N) } # probs of initially vaccinated
-  P$fit = list(
-    w.shape    =  0.8,
-    r.ptr.casu =  0.017,
-    r.ptr.once =  0.017,
-    w.pwr.excl = +0.3,
-    w.pwr.open = -0.3)
+  P$fit = def.params.fit(P$context)
   P = list.update(P,...) # override any of the above
   P = def.params.net(P)
   # conditional parameters
@@ -42,6 +38,27 @@ def.params.s = function(seeds,...,.par=TRUE){
 even = function(x){ x = round(x); x + x %% 2 }
 rcap = function(x,xmin=1,xmax=Inf){ pmax(xmin,pmin(xmax,round(x))) }
 
+def.params.fit = function(context){
+  fit = list(
+  'engage' = list(
+    w.shape    =  0.8,
+    r.ptr.casu =  0.017,
+    r.ptr.once =  0.017,
+    w.pwr.excl = +0.3,
+    w.pwr.open = -0.3,
+    p.excl     = .154,
+    p.open     = .309),
+  'kenya' = list(
+    w.shape    =  1.5,
+    r.ptr.casu =  0.008,
+    r.ptr.once =  0.037,
+    w.pwr.excl = -0.16,
+    w.pwr.open = -0.16,
+    p.excl     =  0.15,
+    p.open     =  0.15)
+  )[[context]]
+}
+
 def.params.net = function(P){
   P$t.vec         = 1:P$t.max
   P$dur.main.rfun = r.fun(rweibull,shape=.585,scale=1059,rmin=7,rmax=3650)
@@ -51,8 +68,8 @@ def.params.net = function(P){
   P$f.sex   = .25 # TODO
   p.main.xs = 1-.046*P$t.max^.39 # handfit
   P$N.e.type = even(P$N / 2 * c(
-    excl = .154/p.main.xs,
-    open = .309/p.main.xs,
+    excl = P$fit$p.excl/p.main.xs,
+    open = P$fit$p.open/p.main.xs,
     casu = P$fit$r.ptr.casu*P$t.max,
     once = P$fit$r.ptr.once*P$t.max))
   return(P)
@@ -92,10 +109,10 @@ make.net = function(P){
   w.i = P$w.ptr.rfun(P$N) # weight for forming non-excl partnerships
   N.e = sum(P$N.e.type) # total partnerships
   # sample t0 & tf for all partnerships
-  tt.excl = sample.tt(P$dur.main.rfun(P$N.e.type[1]))
-  tt.open = sample.tt(P$dur.main.rfun(P$N.e.type[2]))
-  tt.casu = sample.tt(P$dur.casu.rfun(P$N.e.type[3]))
-  tt.once = sample.tt(P$dur.once.rfun(P$N.e.type[4]))
+  tt.excl = sample.tt(P$dur.main.rfun(P$N.e.type[1]),P$t.max)
+  tt.open = sample.tt(P$dur.main.rfun(P$N.e.type[2]),P$t.max)
+  tt.casu = sample.tt(P$dur.casu.rfun(P$N.e.type[3]),P$t.max)
+  tt.once = sample.tt(P$dur.once.rfun(P$N.e.type[4]),P$t.max)
   # assign pairs
   w.excl = w.i^P$fit$w.pwr.excl
   w.open = w.i^P$fit$w.pwr.open

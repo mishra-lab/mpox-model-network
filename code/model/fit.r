@@ -24,8 +24,11 @@ fit.engage = function(N.s=21){
     r.ptr.once = c( 0.017, 0.001, 0.3),
     w.pwr.excl = c(+0.300,-1    ,+1  ),
     w.pwr.open = c(-0.300,-1    ,+1  ))
+  fit.fix = list(
+    p.excl =  0.154,
+    p.open =  0.309)
   err.fun = function(fit){
-    X.mod = fit.ptr.mod(N.s=N.s,fit=as.list(fit),status='main.now')
+    X.mod = fit.ptr.mod(N.s=N.s,fit=c(as.list(fit),fit.fix),status='main.now')
     e = sum(abs(X.dat$cp - X.mod$cp)^2)
     print(c(fit,err=e))
     return(e) }
@@ -40,8 +43,28 @@ fit.engage = function(N.s=21){
 fit.kenya = function(N.s=21){
   source('data/kenya.r')
   X.dat = subset(main.ptr(),x < 6 | county=='all')
+  fit = cbind(
+    w.shape    = c( 1.5,   0.4  , 9.0),
+    r.ptr.casu = c( 0.008, 0.001, 0.1),
+    r.ptr.once = c( 0.037, 0.001, 0.1),
+    w.pwr.excl = c(-0.160,-1    ,+1  ),
+    w.pwr.open = c(-0.160,-1    ,+1  ),
+    p.excl     = c( 0.150, 0.001,0.45),
+    p.open     = c( 0.150, 0.001,0.45))
+  X.dat.7  = subset(X.dat,county=='all' & dt== 7)
+  X.dat.30 = subset(X.dat,county=='all' & dt==30)
+  err.fun = function(fit){
+    e = sum(c(
+      (X.dat.7$cp  - fit.ptr.mod(N.s=N.s,fit=as.list(fit),dt= 7,x=0:20)$cp)^2,
+      (X.dat.30$cp - fit.ptr.mod(N.s=N.s,fit=as.list(fit),dt=30,x=0:20)$cp)^2))
+    print(c(fit,err=e))
+    return(e) }
+  opt = optim(unlist(fit[1,]),err.fun,method='L-BFGS-B',
+    lower=unlist(fit[2,]),upper=unlist(fit[3,]))
+  # opt = list(par=unlist(fit[1,])); opt$value = err.fun(opt$par) # DEBUG
+  print(opt)
   for (dti in c(7,30)){
-    X.mod = cbind(fit.ptr.mod(N.s=N.s,dt=dti,x=0:20),county='mod')
+    X.mod = cbind(fit.ptr.mod(N.s=7,fit=as.list(opt$par),dt=dti,x=0:20),county='mod')
     X.dat.dt = subset(X.dat,dt==dti)
     fit.ptr.plot(X.dat.dt,X.mod,dti,x.max=20,clr='county')
     fig.save(fname(sprintf('ptr.%d.kenya',dti)),w=5,h=5)
@@ -60,7 +83,7 @@ fit.ptr.mod = function(N.s,x=0:300,dt=180,...,N=1000,status='.'){
     i.stat = split(P$G$i,P$G$attr$i[[status]]) # split by status
     X.mod.s = rbind.lapply(names(i.stat),function(stat){ # each status
       i.s = i.stat[[stat]] # individuals with this status
-      if (dt==180){ # lookup # ptrs -> 1 histogram
+      if (dt==P$t.max){ # lookup # ptrs -> 1 histogram
         nt = tabulate0(P$G$attr$i$n.ptr.tot[i.s],max(x))
         nt = matrix(nt,nrow=len(x)) # for apply below
       } else { # compute # ptrs -> len(t.obs) histograms
@@ -88,7 +111,7 @@ fit.ptr.plot = function(X.dat,X.mod,dt=180,x.max=50,clr='status'){
     facet_grid('facet',scales='free_y') +
     stat_summary(geom='ribbon',fun.min=min,fun.max=max,alpha=.3,color=NA) +
     stat_summary(geom='line',fun=median) +
-    lims(x=c(0,x.max)) +
+    lims(x=c(0,x.max),y=c(0,NA)) +
     labs(y='Proportion',linetype='') +
     xlab(sprintf('Total number of partners in %d days',dt))
   g = add.meta.scales(g,list(color=clr,fill=clr))
