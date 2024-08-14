@@ -48,7 +48,7 @@ def.params.net = function(P){
   P$dur.casu.rfun = r.fun(rweibull,shape=.387,scale= 199,rmin=1,rmax=3650)
   P$dur.once.rfun = r.fun(rep,x=1)
   P$w.ptr.rfun  = function(n){ rweibull(n,shape=P$fit$w.shape) }
-  P$f.sex    = .25 # TODO
+  P$f.sex   = .25 # TODO
   p.main.xs = 1-.046*P$t.max^.39 # handfit
   P$N.e.type = even(P$N / 2 * c(
     excl = .154/p.main.xs,
@@ -58,11 +58,11 @@ def.params.net = function(P){
   return(P)
 }
 
-sample.tt = function(dur){
+sample.tt = function(durs,t.max){
   # sample t0,tf given dur which guarantees all partnerships
-  # will overlap with [1,180], i.e. t0 <= 180 or tf >= 1
-  t0 = round(runif(len(dur),1-dur,180))
-  tt = cbind(t0=t0,tf=t0+round(dur))
+  # will overlap with [1,t.max], i.e. t0 <= t.max or tf >= 1
+  t0 = round(runif(len(durs),1-durs,t.max))
+  tt = cbind(t0=t0,tf=t0+round(durs))
 }
 
 e.match = function(ii.excl,ii.misc){
@@ -87,7 +87,7 @@ assign.ii = function(tt.excl,tt.misc,ii.excl,i,w.i){
 }
 
 make.net = function(P){
-  # the sexual network reflects all partnerships for 180 days
+  # the sexual network reflects all partnerships for P$t.max days
   i = seqn(P$N)
   w.i = P$w.ptr.rfun(P$N) # weight for forming non-excl partnerships
   N.e = sum(P$N.e.type) # total partnerships
@@ -108,7 +108,7 @@ make.net = function(P){
   ii.e = rbind(ii.excl, ii.open, ii.casu, ii.once) # all pairs
   # attributes
   g.attr = list()
-  g.attr$dur = P$net.dur
+  g.attr$dur = P$t.max
   e.attr = list()
   e.attr$t0  = c(tt.excl[,1],tt.open[,1],tt.casu[,1],tt.once[,1])
   e.attr$tf  = c(tt.excl[,2],tt.open[,2],tt.casu[,2],tt.once[,2])
@@ -122,8 +122,8 @@ make.net = function(P){
     ifelse(i %in% ii.excl,'excl',
     ifelse(i %in% ii.open,'open','noma')))
   i.attr$main.now = factor(levels=M$main$name,
-    ifelse(i %in% ii.excl[tt.excl[,2] >= 180,],'excl',
-    ifelse(i %in% ii.open[tt.open[,2] >= 180,],'open','noma')))
+    ifelse(i %in% ii.excl[tt.excl[,2] >= P$t.max,],'excl',
+    ifelse(i %in% ii.open[tt.open[,2] >= P$t.max,],'open','noma')))
   # hist(i.attr$deg,max(i.attr$deg)) # DEBUG
   # graph object
   G = graph.obj(ii.e=ii.e,i=i,g.attr=g.attr,i.attr=i.attr,e.attr=e.attr)
