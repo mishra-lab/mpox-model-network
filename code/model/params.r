@@ -53,8 +53,8 @@ def.params.net = function(P){
   P$N.e.type = even(P$N / 2 * c(
     excl = .154/p.main.xs,
     open = .309/p.main.xs,
-    casu = P$fit$r.ptr.once*P$t.max,
-    once = P$fit$r.ptr.casu*P$t.max))
+    casu = P$fit$r.ptr.casu*P$t.max,
+    once = P$fit$r.ptr.once*P$t.max))
   return(P)
 }
 
