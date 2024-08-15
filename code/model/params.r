@@ -49,13 +49,13 @@ def.params.fit = function(context){
     p.excl     = .154,
     p.open     = .309),
   'kenya' = list(
-    w.shape    =  1.5,
-    r.ptr.casu =  0.008,
-    r.ptr.once =  0.037,
-    w.pwr.excl = -0.16,
-    w.pwr.open = -0.16,
-    p.excl     =  0.15,
-    p.open     =  0.15)
+    w.shape    = 999,
+    r.ptr.casu = 0.003,
+    r.ptr.once = 0.050,
+    w.pwr.excl = 0,
+    w.pwr.open = 0,
+    p.excl     = 0.250,
+    p.open     = 0.100)
   )[[context]]
 }
 
