@@ -4,7 +4,7 @@ def.params = function(seed=NULL,N=1000,context='engage',t.max=180,...){
   P = list()
   # independent parameters (mostly)
   P$seed           = seed
-  P$context        = context
+  P$context        = as.character(context)
   P$t.max          = t.max
   P$N              = N # pop size total
   P$N.I0           = 10 # number initially infected
@@ -41,30 +41,34 @@ rcap = function(x,xmin=1,xmax=Inf){ pmax(xmin,pmin(xmax,round(x))) }
 def.params.fit = function(context){
   fit = list(
   'engage' = list(
-    w.shape    =  0.8,
-    r.ptr.casu =  0.017,
-    r.ptr.once =  0.017,
-    w.pwr.excl = +0.3,
-    w.pwr.open = -0.3,
-    p.excl     = .154,
-    p.open     = .309),
+    w.sdlog      =  1.3,   # fit
+    r.ptr.casu   =  0.020, # fit
+    r.ptr.once   =  0.020, # fit
+    w.pwr.excl   = +0.200, # fit
+    w.pwr.open   = -0.300, # fit
+    d.main.scale =   1059, # data
+    d.casu.scale =    299, # data
+    p.excl       =  0.154, # data
+    p.open       =  0.309),# data
   'kenya' = list(
-    w.shape    = 999,
-    r.ptr.casu = 0.003,
-    r.ptr.once = 0.050,
-    w.pwr.excl = 0,
-    w.pwr.open = 0,
-    p.excl     = 0.250,
-    p.open     = 0.100)
+    w.sdlog      = 0.4,    # fit
+    r.ptr.casu   = 0.005,  # fit
+    r.ptr.once   = 0.030,  # fit
+    w.pwr.excl   = 0,      # fit
+    w.pwr.open   = 0,      # fit
+    d.main.scale = 720,    # fit
+    d.casu.scale =  60,    # fit
+    p.excl       = 0.1,    # fit
+    p.open       = 0.5)    # fit
   )[[context]]
 }
 
 def.params.net = function(P){
   P$t.vec         = 1:P$t.max
-  P$dur.main.rfun = r.fun(rweibull,shape=.585,scale=1059,rmin=7,rmax=3650)
-  P$dur.casu.rfun = r.fun(rweibull,shape=.387,scale= 199,rmin=1,rmax=3650)
+  P$dur.main.rfun = r.fun(rweibull,shape=.585,scale=P$fit$d.main.scale,rmin=1,rmax=3650)
+  P$dur.casu.rfun = r.fun(rweibull,shape=.387,scale=P$fit$d.casu.scale,rmin=1,rmax=3650)
   P$dur.once.rfun = r.fun(rep,x=1)
-  P$w.ptr.rfun  = function(n){ rweibull(n,shape=P$fit$w.shape) }
+  P$w.ptr.rfun  = function(n){ rlnorm(n,meanlog=1,sdlog=P$fit$w.sdlog) }
   P$f.sex   = .25 # TODO
   p.main.xs = 1-.046*P$t.max^.39 # handfit
   P$N.e.type = even(P$N / 2 * c(

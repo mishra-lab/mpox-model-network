@@ -8,36 +8,39 @@ source('model/epidemic.r')
 source('model/plot.r')
 
 fname = function(slug){
-  # e.g. .../code/.tmp/fit/2022-01-01/{slug}
+  # e.g. .../out/fig/.tmp/fit/2020-01-01/{slug}
   root.path('out','fig','.tmp','fit',Sys.Date(),slug,create=TRUE)
 }
 
 # -----------------------------------------------------------------------------
 # num ptrs vs data
 
+x.max.dt = function(dt){ list('7'=10,'30'=20,'180'=50)[[as.character(dt)]] }
+
 fit.ptr.engage = function(N.s=21){
   source('data/engage.r')
   X.dat = row.select(main.p6m(main.stat()),city='avg')
   fit = cbind(#    init,   min,  max
-    w.shape    = c( 0.800, 0.4  , 9.0),
-    r.ptr.casu = c( 0.017, 0.001, 0.3),
-    r.ptr.once = c( 0.017, 0.001, 0.3),
-    w.pwr.excl = c(+0.300,-1    ,+1  ),
+    w.sdlog    = c( 1.3,   0.4  , 9.0),
+    r.ptr.casu = c( 0.020, 0.001, 0.3),
+    r.ptr.once = c( 0.020, 0.001, 0.3),
+    w.pwr.excl = c(+0.200,-1    ,+1  ),
     w.pwr.open = c(-0.300,-1    ,+1  ))
   fit.fix = list(
+    d.main.scale = 1059,
+    d.casu.scale = 299,
     p.excl =  0.154,
     p.open =  0.309,
     p.adj  =  0)
-  err.fun = function(fit){
+  err.fun = function(fit){ cat(fit)
     X.mod = fit.ptr.mod(N.s=N.s,fit=c(as.list(fit),fit.fix),status='main.now')
-    e = sum(X.dat$p * abs(X.dat$cp - X.mod$cp)^2)
-    print(c(fit,err=e))
-    return(e) }
-  opt = optim(unlist(fit[1,]),err.fun,method='L-BFGS-B',
-    lower=unlist(fit[2,]),upper=unlist(fit[3,]))
-  # opt = list(par=unlist(fit[1,])); opt$value = err.fun(opt$par) # DEBUG
+    e = sum(abs(X.dat$cp - X.mod$cp)^2)/N.s
+    cat(' > e = ',e,'\n'); return(e) }
+  # opt = optim(unlist(fit[1,]),err.fun,method='L-BFGS-B',
+  #   lower=unlist(fit[2,]),upper=unlist(fit[3,]))
+  opt = list(par=unlist(fit[1,])); opt$value = err.fun(opt$par) # DEBUG
   print(opt)
-  X.mod = fit.ptr.mod(N.s=1000,fit=as.list(opt$par),status='main.now')
+  X.mod = fit.ptr.mod(N.s=100,fit=c(as.list(opt$par),fit.fix),status='main.now')
   fit.ptr.plot(X.dat,X.mod); fig.save(fname('ptr.180.engage'),w=5,h=5)
 }
 
@@ -45,30 +48,43 @@ fit.ptr.kenya = function(N.s=21){
   source('data/kenya.r')
   X.dat = subset(main.ptr(),x < 6 | county=='all')
   fit = cbind(
-    w.shape    = c( 999  , 0.5  , 999),
-    r.ptr.casu = c( 0.003, 0.001, 0.1),
-    r.ptr.once = c( 0.050, 0.001, 0.1),
-    w.pwr.excl = c( 0.000,-3    ,+3  ),
-    w.pwr.open = c( 0.000,-3    ,+3  ),
-    p.excl     = c( 0.250, 0.001,0.35),
-    p.open     = c( 0.100, 0.001,0.35),
-    p.adj      = c( 0.200, 0.001,0.50))
+    w.sdlog      = c( 0.4  , 0.1  , 10 ),
+    r.ptr.casu   = c( 0.005, 0.001, 0.1),
+    r.ptr.once   = c( 0.030, 0.001, 0.1),
+    w.pwr.excl   = c( 0.000,-3    ,+3  ),
+    w.pwr.open   = c( 0.000,-3    ,+3  ),
+    d.main.scale = c(  720 , 30   ,3600),
+    d.casu.scale = c(   60 , 30   ,3600),
+    p.excl       = c( 0.100, 0.001,0.35),
+    p.open       = c( 0.500, 0.001,0.75),
+    p.adj        = c( 0.200, 0.001,0.50))
   X.dat.7  = subset(X.dat,county=='all' & dt== 7)
   X.dat.30 = subset(X.dat,county=='all' & dt==30)
   err.fun = function(fit){ cat(fit)
     e = sum(c(
-      X.dat.7$p  * (X.dat.7$cp  - fit.ptr.mod(N.s=N.s,fit=as.list(fit),dt= 7,x=0:20)$cp)^2,
-      X.dat.30$p * (X.dat.30$cp - fit.ptr.mod(N.s=N.s,fit=as.list(fit),dt=30,x=0:20)$cp)^2))
+      (X.dat.7$cp  - fit.ptr.mod(N.s=N.s,fit=as.list(fit),dt= 7,x=0:20)$cp)^2,
+      (X.dat.30$cp - fit.ptr.mod(N.s=N.s,fit=as.list(fit),dt=30,x=0:20)$cp)^2))/N.s
     cat(' > e = ',e,'\n'); return(e) }
-  opt = optim(unlist(fit[1,]),err.fun,method='L-BFGS-B',
-    lower=unlist(fit[2,]),upper=unlist(fit[3,]))
-  # opt = list(par=unlist(fit[1,])); opt$value = err.fun(opt$par) # DEBUG
+  # opt = optim(unlist(fit[1,]),err.fun,method='L-BFGS-B',
+  #   lower=unlist(fit[2,]),upper=unlist(fit[3,]))
+  opt = list(par=unlist(fit[1,])); opt$value = err.fun(opt$par) # DEBUG
   print(opt)
   for (dti in c(7,30)){
-    X.mod = cbind(fit.ptr.mod(N.s=N.s,fit=as.list(opt$par),dt=dti,x=0:20),county='mod')
-    X.dat.dt = subset(X.dat,dt==dti)
-    fit.ptr.plot(X.dat.dt,X.mod,dti,x.max=20,clr='county')
+    x.max = x.max.dt(dti)
+    X.mod = cbind(fit.ptr.mod(N.s=100,fit=as.list(opt$par),dt=dti,x=0:x.max),county='mod')
+    X.dat.dt = subset(X.dat,dt==dti & x<=x.max)
+    fit.ptr.plot(X.dat.dt,X.mod,dti,x.max=x.max,clr='county')
     fig.save(fname(sprintf('ptr.%d.kenya',dti)),w=5,h=5)
+  }
+}
+
+fit.ptr.context = function(N.s=7){
+  for (dti in c(30,180)){
+    x.max = x.max.dt(dti)
+    X = rbind(cbind(fit.ptr.mod(N.s,dt=dti,x=0:x.max,context='engage'),context='engage'),
+              cbind(fit.ptr.mod(N.s,dt=dti,x=0:x.max,context='kenya'), context='kenya'))
+    fit.ptr.plot(X[,],X,dti,x.max=x.max,clr='context')
+    fig.save(fname(sprintf('ptr.%d.context',dti)),w=5,h=5)
   }
 }
 
@@ -90,7 +106,8 @@ fit.ptr.mod = function(N.s,x=0:300,dt=180,...,N=1000,status='.'){
       } else { # compute # ptrs -> len(t.obs) histograms
         e.i = lapply(i.s,function(i){ # partners per individual
           which(P$G$ii.e[,1]==i | P$G$ii.e[,2]==i) })
-        a.i = runif(e.i) < P$fit$p.adj # inds who report sex acts > num ptrs
+        p.adj = ifelse(is.null(P$fit$p.adj),0,P$fit$p.adj)
+        a.i = runif(e.i) < p.adj # inds who report sex acts > num ptrs
         nt = sapply(t.obs,function(t){ # for each recall window
           tabulate0(mapply(function(e,a){ # histogram: reported ptrs
             if (a){ # num total sex acts (over-report)
@@ -149,11 +166,11 @@ fit.pdur.kenya = function(N.s=21,N.ptr=3,d.max=3650){
       ptrs=rep(c('All','Non-Once'),each=len(x)))
   })
   X.dat = data.frame(x=x,ptrs=NA,cp=do.call(pweibull,c(list(q=x),args.pdur)))
-  g = fit.pdur.plot(X.mod,X.dat)
+  g = fit.pdur.plot(X.mod,X.dat,N.ptr)
   fig.save(fname('pdur.3r.kenya'),w=5,h=3)
 }
 
-fit.pdur.plot = function(X.mod,X.dat){
+fit.pdur.plot = function(X.mod,X.dat,N.ptr){
   X = rbind(cbind(X.mod,src='Sim'),cbind(X.dat,src='Data'))
   g = ggplot(X,aes(x=x,y=cp,color=ptrs,fill=ptrs,linetype=src)) +
     stat_summary(geom='ribbon',fun.min=min,fun.max=max,alpha=.2,color=NA) +
@@ -254,6 +271,7 @@ if (sys.nframe() == 0){
   .debug = FALSE
   fit.ptr.engage()
   fit.ptr.kenya()
+  fit.ptr.context()
   fit.pdur.kenya()
   fit.durs.plot()
   .debug = TRUE
