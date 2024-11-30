@@ -18,7 +18,7 @@ def.params = function(seed=NULL,N=1000,context='engage',t.max=180,...){
   P$vax.eff.dose   = c(.85,.88) # vaccine effectiveness by dose
   P$N.V0           = c(.00,.00) * P$N # total number initially vaccinated by dose
   P$V0.pfun        = function(P){ rep(1,P$N) } # probs of initially vaccinated
-  P$fit = def.params.fit(P$context)
+  P = def.params.context(P)
   P = list.update(P,...) # override any of the above
   P = def.params.net(P)
   # conditional parameters
@@ -35,47 +35,52 @@ def.params.s = function(seeds,...,.par=TRUE){
   P.s = par.lapply(seeds,def.params,...,.par=.par)
 }
 
+rep1 = function(n){ rep(1,n) }
 even = function(x){ x = round(x); x + x %% 2 }
 rcap = function(x,xmin=1,xmax=Inf){ pmax(xmin,pmin(xmax,round(x))) }
 
-def.params.fit = function(context){
-  fit = list(
-  'engage' = list(
-    w.sdlog      =  1.3,   # fit
-    r.ptr.casu   =  0.020, # fit
-    r.ptr.once   =  0.020, # fit
-    w.pwr.excl   = +0.200, # fit
-    w.pwr.open   = -0.300, # fit
-    d.main.scale =   1059, # data
-    d.casu.scale =    299, # data
-    p.excl       =  0.154, # data
-    p.open       =  0.309),# data
-  'kenya' = list(
-    w.sdlog      = 0.4,    # fit
-    r.ptr.casu   = 0.005,  # fit
-    r.ptr.once   = 0.030,  # fit
-    w.pwr.excl   = 0,      # fit
-    w.pwr.open   = 0,      # fit
-    d.main.scale = 720,    # fit
-    d.casu.scale =  60,    # fit
-    p.excl       = 0.1,    # fit
-    p.open       = 0.5)    # fit
-  )[[context]]
+def.params.context = function(P){
+  if (P$context == 'engage'){
+    P$w.sdlog     =  1.3   # fit
+    P$p.excl      =  0.154 # data
+    P$p.open      =  0.309 # data
+    P$w.pwr.excl  = +0.200 # fit
+    P$w.pwr.open  = -0.300 # fit
+    P$r.ptr.casu  =  0.020 # fit
+    P$r.ptr.once  =  0.020 # fit
+    P$r.ptr.sell  =  0     # TODO
+    P$d.main.rfun = r.fun(rweibull,shape=.585,scale=1059,rmin=1,rmax=3650) # data
+    P$d.casu.rfun = r.fun(rweibull,shape=.387,scale= 299,rmin=1,rmax=3650) # data
+  }
+  if (P$context == 'kenya'){
+    # note: weak handfit
+    P$w.sdlog     =  1.8   #
+    P$p.excl      =  0.05  #
+    P$p.open      =  0.40  #
+    P$w.pwr.excl  =  0     #
+    P$w.pwr.open  =  0     #
+    P$r.ptr.casu  =  0.040 #
+    P$r.ptr.once  =  0.020 #
+    P$r.ptr.sell  =  0.020 #
+    P$d.main.rfun = r.fun(rweibull,shape=1.20,scale=1200,rmin=1,rmax=3650) #
+    P$d.casu.rfun = r.fun(rlnorm,meanlog=2.6,sdlog=1.3,rmin=1,rmax=180) #
+  }
+  return(P)
 }
 
 def.params.net = function(P){
   P$t.vec         = 1:P$t.max
-  P$dur.main.rfun = r.fun(rweibull,shape=.585,scale=P$fit$d.main.scale,rmin=1,rmax=3650)
-  P$dur.casu.rfun = r.fun(rweibull,shape=.387,scale=P$fit$d.casu.scale,rmin=1,rmax=3650)
-  P$dur.once.rfun = r.fun(rep,x=1)
-  P$w.ptr.rfun  = function(n){ rlnorm(n,meanlog=1,sdlog=P$fit$w.sdlog) }
+  P$d.once.rfun = r.fun(rep1)
+  P$d.sell.rfun = r.fun(rep1)
+  P$w.ptr.rfun  = function(n){ rlnorm(n,meanlog=1,sdlog=P$w.sdlog) }
   P$f.sex   = .25 # TODO
   p.main.xs = 1-.046*P$t.max^.39 # handfit
   P$N.e.type = even(P$N / 2 * c(
-    excl = P$fit$p.excl/p.main.xs,
-    open = P$fit$p.open/p.main.xs,
-    casu = P$fit$r.ptr.casu*P$t.max,
-    once = P$fit$r.ptr.once*P$t.max))
+    excl = P$p.excl/p.main.xs,
+    open = P$p.open/p.main.xs,
+    casu = P$r.ptr.casu*P$t.max,
+    once = P$r.ptr.once*P$t.max,
+    sell = P$r.ptr.sell*P$t.max))
   return(P)
 }
 
@@ -113,26 +118,28 @@ make.net = function(P){
   w.i = P$w.ptr.rfun(P$N) # weight for forming non-excl partnerships
   N.e = sum(P$N.e.type) # total partnerships
   # sample t0 & tf for all partnerships
-  tt.excl = sample.tt(P$dur.main.rfun(P$N.e.type[1]),P$t.max)
-  tt.open = sample.tt(P$dur.main.rfun(P$N.e.type[2]),P$t.max)
-  tt.casu = sample.tt(P$dur.casu.rfun(P$N.e.type[3]),P$t.max)
-  tt.once = sample.tt(P$dur.once.rfun(P$N.e.type[4]),P$t.max)
+  tt.excl = sample.tt(P$d.main.rfun(P$N.e.type[1]),P$t.max)
+  tt.open = sample.tt(P$d.main.rfun(P$N.e.type[2]),P$t.max)
+  tt.casu = sample.tt(P$d.casu.rfun(P$N.e.type[3]),P$t.max)
+  tt.once = sample.tt(P$d.once.rfun(P$N.e.type[4]),P$t.max)
+  tt.sell = sample.tt(P$d.sell.rfun(P$N.e.type[5]),P$t.max)
   # assign pairs
-  w.excl = w.i^P$fit$w.pwr.excl
-  w.open = w.i^P$fit$w.pwr.open
+  w.excl = w.i^P$w.pwr.excl
+  w.open = w.i^P$w.pwr.open
   i.excl = sample.wtd(i,w=w.excl,n=P$N.e.type[1]*2) # inds with 1 excl-main
   i.open = sample.wtd(i[-i.excl],w=w.open[-i.excl],n=P$N.e.type[2]*2) # inds with 1 open-main
   ii.excl = matrix(i.excl,ncol=2) # excl pairs
   ii.open = matrix(i.open,ncol=2) # open pairs
   ii.casu = assign.ii(tt.excl,tt.casu,ii.excl,i,w.i) # casu pairs
   ii.once = assign.ii(tt.excl,tt.once,ii.excl,i,w.i) # once pairs
-  ii.e = rbind(ii.excl, ii.open, ii.casu, ii.once) # all pairs
+  ii.sell = assign.ii(tt.excl,tt.sell,ii.excl,i,w.i) # sell pairs
+  ii.e = rbind(ii.excl, ii.open, ii.casu, ii.once, ii.sell) # all pairs
   # attributes
   g.attr = list()
   g.attr$dur = P$t.max
   e.attr = list()
-  e.attr$t0  = c(tt.excl[,1],tt.open[,1],tt.casu[,1],tt.once[,1])
-  e.attr$tf  = c(tt.excl[,2],tt.open[,2],tt.casu[,2],tt.once[,2])
+  e.attr$t0  = c(tt.excl[,1],tt.open[,1],tt.casu[,1],tt.once[,1],tt.sell[,1])
+  e.attr$tf  = c(tt.excl[,2],tt.open[,2],tt.casu[,2],tt.once[,2],tt.sell[,2])
   e.attr$dur = e.attr$tf - e.attr$t0
   e.attr$type = factor(rep(names(P$N.e.type),P$N.e.type))
   i.attr = list()
