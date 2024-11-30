@@ -15,11 +15,16 @@ fname = function(slug){
 # -----------------------------------------------------------------------------
 # num ptrs vs data
 
-x.max.dt = function(dt){ list('7'=10,'30'=20,'180'=50)[[as.character(dt)]] }
+x.max.dt = function(dt){ list('7'=10,'30'=20,'180'=50,'365'=50)[[as.character(dt)]] }
+
+err.ptr = function(X.dat,X.mod){
+  X = merge(X.dat,X.mod,by=c('dt','x'),suffix=c('.dat','.mod'))
+  cp.diff = X$cp.dat - X$cp.mod
+  e = mean(abs(cp.diff)) + mean(cp.diff^2) }
 
 fit.ptr.engage = function(N.s=21){
   source('data/engage.r')
-  X.dat = row.select(main.p6m(main.stat()),city='avg')
+  X.dat = cbind(subset(main.p6m(main.stat()),city=='avg'),dt=180)
   fit = cbind(#    init,   min,  max
     w.sdlog    = c( 1.3,   0.4  , 9.0),
     r.ptr.casu = c( 0.020, 0.001, 0.3),
@@ -31,16 +36,16 @@ fit.ptr.engage = function(N.s=21){
     d.casu.scale = 299,
     p.excl =  0.154,
     p.open =  0.309,
-    p.adj  =  0)
+    r.ptr.sell = 0) # TODO
   err.fun = function(fit){ cat(fit)
     X.mod = fit.ptr.mod(N.s=N.s,fit=c(as.list(fit),fit.fix),status='main.now')
-    e = sum(abs(X.dat$cp - X.mod$cp)^2)/N.s
+    e = err.ptr(X.dat,X.mod)
     cat(' > e = ',e,'\n'); return(e) }
   # opt = optim(unlist(fit[1,]),err.fun,method='L-BFGS-B',
   #   lower=unlist(fit[2,]),upper=unlist(fit[3,]))
   opt = list(par=unlist(fit[1,])); opt$value = err.fun(opt$par) # DEBUG
   print(opt)
-  X.mod = fit.ptr.mod(N.s=100,fit=c(as.list(opt$par),fit.fix),status='main.now')
+  X.mod = fit.ptr.mod(N.s=N.s,fit=c(as.list(opt$par),fit.fix),status='main.now')
   fit.ptr.plot(X.dat,X.mod); fig.save(fname('ptr.180.engage'),w=5,h=5)
 }
 
@@ -48,37 +53,34 @@ fit.ptr.kenya = function(N.s=21){
   source('data/kenya.r')
   X.dat = subset(main.ptr(),x < 6 | county=='all')
   fit = cbind(
-    w.sdlog      = c( 0.4  , 0.1  , 10 ),
-    r.ptr.casu   = c( 0.005, 0.001, 0.1),
-    r.ptr.once   = c( 0.030, 0.001, 0.1),
-    w.pwr.excl   = c( 0.000,-3    ,+3  ),
-    w.pwr.open   = c( 0.000,-3    ,+3  ),
-    d.main.scale = c(  720 , 30   ,3600),
-    d.casu.scale = c(   60 , 30   ,3600),
-    p.excl       = c( 0.100, 0.001,0.35),
-    p.open       = c( 0.500, 0.001,0.75),
-    p.adj        = c( 0.200, 0.001,0.50))
-  X.dat.7  = subset(X.dat,county=='all' & dt== 7)
-  X.dat.30 = subset(X.dat,county=='all' & dt==30)
+    w.sdlog      = c( 1.8,   0.4  , 5.0),
+    r.ptr.casu   = c( 0.025, 0.001, 0.1),
+    r.ptr.once   = c( 0.060, 0.001, 0.1),
+    r.ptr.sell   = c( 0.000, 0.001, 0.1),
+    w.pwr.excl   = c( 0    ,-3    ,+3  ),
+    w.pwr.open   = c( 0    ,-3    ,+3  ),
+    p.excl       = c( 0.050, 0.001,0.35),
+    p.open       = c( 0.400, 0.001,0.75))
+  args = list(N.s=N.s,context='kenya',
+    p.type=list(excl=1,open=1,casu=1,once=1/3,sell=0))
   err.fun = function(fit){ cat(fit)
-    e = sum(c(
-      (X.dat.7$cp  - fit.ptr.mod(N.s=N.s,fit=as.list(fit),dt= 7,x=0:20)$cp)^2,
-      (X.dat.30$cp - fit.ptr.mod(N.s=N.s,fit=as.list(fit),dt=30,x=0:20)$cp)^2))/N.s
+    X.mod = kw.call(fit.ptr.mod,c(args,fit),dts=c(7,30,365),x=0:50)
+    e = err.ptr(X.dat,X.mod)
     cat(' > e = ',e,'\n'); return(e) }
   # opt = optim(unlist(fit[1,]),err.fun,method='L-BFGS-B',
   #   lower=unlist(fit[2,]),upper=unlist(fit[3,]))
   opt = list(par=unlist(fit[1,])); opt$value = err.fun(opt$par) # DEBUG
   print(opt)
-  for (dti in c(7,30)){
+  for (dti in c(7,30,365)){
     x.max = x.max.dt(dti)
-    X.mod = cbind(fit.ptr.mod(N.s=100,fit=as.list(opt$par),dt=dti,x=0:x.max),county='mod')
+    X.mod = cbind(kw.call(fit.ptr.mod,c(args,opt$par),dt=dti,x=0:x.max),county='mod')
     X.dat.dt = subset(X.dat,dt==dti & x<=x.max)
     fit.ptr.plot(X.dat.dt,X.mod,dti,x.max=x.max,clr='county')
-    fig.save(fname(sprintf('ptr.%d.kenya',dti)),w=5,h=5)
+    fig.save(fname(sprintf('ptr.%d.kenya',dti)),w=5,h=4)
   }
 }
 
-fit.ptr.context = function(N.s=7){
+fit.ptr.context = function(N.s=100){
   for (dti in c(30,180)){
     x.max = x.max.dt(dti)
     X = rbind(cbind(fit.ptr.mod(N.s,dt=dti,x=0:x.max,context='engage'),context='engage'),
@@ -88,39 +90,32 @@ fit.ptr.context = function(N.s=7){
   }
 }
 
-fit.ptr.mod = function(N.s,x=0:300,dt=180,...,N=1000,status='.'){
-  # lookup or compute histogram of # partners observed in dt
-  # for N.s param sets (pop size = N), possibly stratified by status
-  t.obs = seq(0,180,max(dt,30))
-  P.s = def.params.s(N.s,N=N,t.max=180,...,.par=FALSE)
+fit.ptr.mod = function(N.s,x=0:300,dts=180,...,N=1000,status='.',
+    p.type=list(excl=1,open=1,casu=1,once=1,sell=1)){
+  # compute histogram of # partners reported in each dt
+  # with p.type prob of reporting ptrs of each type
+  # for N.s param sets, pop size N, stratified by status
+  t.max = 365
+  P.s = def.params.s(N.s,N=N,t.max=t.max,...,.par=FALSE)
   X.mod = rbind.lapply(P.s,function(P){ # each param set
-    P$G$attr$i$. = 0 # dummy stat
-    t0.e = P$G$attr$e$t0 # for speed
-    tf.e = P$G$attr$e$tf # for speed
+    P$G$attr$i$. = 0 # dummy status
+    e = unlist(lapply(names(p.type),function(type){ # sample ptrs per p.type
+      which(P$G$attr$e$type==type & runif(P$G$N.e) < p.type[[type]])
+    }))
+    ii.e = P$G$ii.e[e,]     # for speed
+    t0.e = P$G$attr$e$t0[e] # for speed
+    tf.e = P$G$attr$e$tf[e] # for speed
     i.stat = split(P$G$i,P$G$attr$i[[status]]) # split by status
     X.mod.s = rbind.lapply(names(i.stat),function(stat){ # each status
       i.s = i.stat[[stat]] # individuals with this status
-      if (dt==P$t.max){ # lookup # ptrs -> 1 histogram
-        nt = tabulate0(P$G$attr$i$n.ptr.tot[i.s],max(x))
-        nt = matrix(nt,nrow=len(x)) # for apply below
-      } else { # compute # ptrs -> len(t.obs) histograms
-        e.i = lapply(i.s,function(i){ # partners per individual
-          which(P$G$ii.e[,1]==i | P$G$ii.e[,2]==i) })
-        p.adj = ifelse(is.null(P$fit$p.adj),0,P$fit$p.adj)
-        a.i = runif(e.i) < p.adj # inds who report sex acts > num ptrs
-        nt = sapply(t.obs,function(t){ # for each recall window
-          tabulate0(mapply(function(e,a){ # histogram: reported ptrs
-            if (a){ # num total sex acts (over-report)
-              d.e = pmax(0, pmin(tf.e[e],t+dt) - pmax(t0.e[e],t))
-              n = rbinom(1,sum(d.e),P$f.sex)
-            } else { # num pts (ideal report)
-              n = sum(t0.e[e] <= t+dt & tf.e[e] >= t)
-            }
-          },e.i,a.i),max(x))
-        })
-      }
-      X.mod.ms = data.frame(seed=P$seed,dt=dt,status=stat,x=x,
-        p=c(apply(nt,2,sum1)),cp=c(apply(nt,2,cum1)))
+      e.i = lapply(i.s,function(i){ which(ii.e[,1]==i | ii.e[,2]==i) })
+      X.mod.ss = rbind.lapply(dts,function(dt){ # each dt
+        nt = tabulate0(sapply(e.i,function(e){ # each individual
+          n = sum(t0.e[e] <= t.max & tf.e[e] >= t.max-dt) # num ptrs reported
+        }),max(x))
+        X.mod.sst = data.frame(seed=P$seed,dt=dt,status=stat,x=x,
+          p=sum1(nt),cp=cum1(nt))
+      })
     })
   })
 }
@@ -146,18 +141,19 @@ fit.ptr.plot = function(X.dat,X.mod,dt=180,x.max=50,clr='status'){
 # -----------------------------------------------------------------------------
 # ptr durs vs data
 
-fit.pdur.kenya = function(N.s=21,N.ptr=3,d.max=3650){
+fit.pdur.kenya = function(N.s=21,N.ptr=3,d.max=3650,
+    p.type=list(excl=1,open=1,casu=1,once=1,sell=1)){
   source('data/kenya.r')
   x = 0:d.max
   P.s = def.params.s(N.s,N=1000,context='kenya')
   X.mod = rbind.lapply(P.s,function(P){
     t0.e = P$G$attr$e$t0 # speed
     tf.e = pmin(P$G$attr$e$tf,P$t.max) # speed + censoring
-    once.e = P$G$attr$e$type == 'once' # speed
+    ign.e = P$G$attr$e$type %in% c('once','sell') # speed
     dur.s = rbind.lapply(P$G$i,function(i){ # for each individual
       b.all  = P$G$ii.e[,1]==i | P$G$ii.e[,2]==i # ptrs of i
       e.all  = which(b.all) # all ptrs
-      e.sub  = which(b.all & !once.e) # all ptrs except once
+      e.sub  = which(b.all & !ign.e) # all ptrs except once
       dur.si = cbind( # durs of last N.ptr
         all = sort(sample(tf.e[e.all]-t0.e[e.all]),decr=TRUE)[1:N.ptr],
         sub = sort(sample(tf.e[e.sub]-t0.e[e.sub]),decr=TRUE)[1:N.ptr])
