@@ -11,9 +11,11 @@ aes.quantile = function(x,y,map){
   do.call(aes_string,c(list(x=x,y=paste0(y,'.1'),ymin=paste0(y,'.2'),ymax=paste0(y,'.3')),map))
 }
 
-plot.clean = function(g){
+plot.clean = function(g,...){
   g = g + theme_light() +
-    theme(strip.background=element_rect(fill='gray90'),strip.text=element_text(color='black'))
+    theme(...,
+      strip.background=element_rect(fill='gray90'),
+      strip.text=element_text(color='black'))
 }
 
 add.meta.scales = function(g,map){
@@ -95,17 +97,17 @@ plot.G.distr = function(P.s,gie,attr,select=list(),...,cuts=NULL,cum=FALSE){
   g = plot.clean(g)
 }
 
-plot.epidemic = function(out.long,select=list(),conf.int=.9,facet=NULL,color='health',scales=NULL,...){
+plot.epidemic = function(out.long,select=list(),conf.int=.9,color='health',facet=NULL,scales=NULL,...){
   # plot median for out.long$value, after selecting some rows
   # out.long can also be out.long.s (e.g. from rbind), then we add ribbon confidence interval
   out.long = row.select(out.long,list.update(list(var='N'),select))
   map = list(color=color,fill=color,...)
   out.long.q = aggr.quantile(out.long,x='t',y='value',map=map,facet=facet,ci=conf.int)
   g = ggplot(out.long.q,aes.quantile(x='t',y='value',map=map)) +
+    facet_grid(facet,scales=scales) +
     geom_ribbon(color=NA,alpha=.2) +
     geom_line() +
-    labs(x='Time (days)') +
-    facet_grid(facet,scales=scales)
+    labs(x='Time (days)')
   g = add.meta.scales(g,list.update(map,fill=color))
   g = plot.clean(g)
   return(g)
