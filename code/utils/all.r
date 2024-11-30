@@ -5,6 +5,7 @@ options(
   stringsAsFactors=FALSE,
   showNCalls=500,
   nwarnings=1e4,
+  scipen=99,
   width=200)
 
 # -----------------------------------------------------------------------------
@@ -127,10 +128,10 @@ sample.wtd = function(x,w,n=len(x)){
   x.sample = x[order(key,decreasing=TRUE)][1:n]
 }
 
-r.fun = function(fun,...,shift=0,rmin=NULL,rmax=NULL){
+r.fun = function(fun,args=list(),...,shift=0,rmin=NULL,rmax=NULL){
   # pre-specify some arguments to random number generating fun
   # e.g. f = r.fun(runif,min=1,max=2); f(n=10) -> runif(n=10,min=1,max=2)
-  args = list(...)
+  args = list.update(args,...)
   rfun = function(...){
     r = kw.call(fun,args,...) + shift
     if (!is.null(rmin)){ r = pmax(r,rmin) }
